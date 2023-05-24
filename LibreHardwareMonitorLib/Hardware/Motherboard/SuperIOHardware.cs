@@ -2078,26 +2078,56 @@ internal sealed class SuperIOHardware : Hardware
 
                         break;
                     default:
-                        v.Add(new Voltage("VCC3V", 0, 150, 150));
-                        v.Add(new Voltage("Vcore", 1));
-                        v.Add(new Voltage("Voltage #3", 2, true));
-                        v.Add(new Voltage("Voltage #4", 3, true));
-                        v.Add(new Voltage("Voltage #5", 4, true));
-                        v.Add(new Voltage("Voltage #6", 5, true));
-                        if (superIO.Chip != Chip.F71808E)
-                            v.Add(new Voltage("Voltage #7", 6, true));
+                        switch (superIO.Chip)
+                        {
+                            case Chip.F71889AD:
+                                v.Add(new Voltage("VCC3V", 0, 150, 150));
+                                v.Add(new Voltage("Vcore", 1));
+                                v.Add(new Voltage("Voltage #3", 2));
+                                v.Add(new Voltage("+5V", 3, 20, 4.7f));
+                                v.Add(new Voltage("+12V", 4, 68, 6.8f));
+                                v.Add(new Voltage("DRAM A/B", 5, 150, 150));
+                                v.Add(new Voltage("Voltage #7", 6, true));
 
-                        v.Add(new Voltage("VSB3V", 7, 150, 150));
-                        v.Add(new Voltage("VBat", 8, 150, 150));
+                                v.Add(new Voltage("VSB3V", 7, 150, 150));
+                                v.Add(new Voltage("VBat", 8, 150, 150));
 
-                        for (int i = 0; i < superIO.Temperatures.Length; i++)
-                            t.Add(new Temperature("Temperature #" + (i + 1), i));
+                                t.Add(new Temperature("CPU", 0));
+                                for (int i = 1; i < superIO.Temperatures.Length; i++)
+                                    t.Add(new Temperature("Temperature #" + (i + 1), i));
 
-                        for (int i = 0; i < superIO.Fans.Length; i++)
-                            f.Add(new Fan("Fan #" + (i + 1), i));
+                                for (int i = 0; i < superIO.Fans.Length; i++)
+                                    f.Add(new Fan("Fan #" + (i + 1), i));
 
-                        for (int i = 0; i < superIO.Controls.Length; i++)
-                            c.Add(new Control("Fan Control #" + (i + 1), i));
+                                for (int i = 0; i < superIO.Controls.Length; i++)
+                                    c.Add(new Control("Fan Control #" + (i + 1), i));
+
+                                break;
+
+                            default:
+                                v.Add(new Voltage("VCC3V", 0, 150, 150));
+                                v.Add(new Voltage("Vcore", 1));
+                                v.Add(new Voltage("Voltage #3", 2, true));
+                                v.Add(new Voltage("Voltage #4", 3, true));
+                                v.Add(new Voltage("Voltage #5", 4, true));
+                                v.Add(new Voltage("Voltage #6", 5, true));
+                                if (superIO.Chip != Chip.F71808E)
+                                    v.Add(new Voltage("Voltage #7", 6, true));
+
+                                v.Add(new Voltage("VSB3V", 7, 150, 150));
+                                v.Add(new Voltage("VBat", 8, 150, 150));
+
+                                for (int i = 0; i < superIO.Temperatures.Length; i++)
+                                    t.Add(new Temperature("Temperature #" + (i + 1), i));
+
+                                for (int i = 0; i < superIO.Fans.Length; i++)
+                                    f.Add(new Fan("Fan #" + (i + 1), i));
+
+                                for (int i = 0; i < superIO.Controls.Length; i++)
+                                    c.Add(new Control("Fan Control #" + (i + 1), i));
+
+                                break;
+                        }
 
                         break;
                 }
@@ -2137,7 +2167,8 @@ internal sealed class SuperIOHardware : Hardware
             case Manufacturer.MSI:
                 switch (model)
                 {
-                    case Model.Z77_MPower: // Probably rev 4.0+ (F75387)
+                    // Probably all MSI boards with this chip also have the F71889AD
+                    default:
                         v.Add(new Voltage("VCC", 0, 150, 150));
                         for (int i = 1; i < superIO.Voltages.Length; i++)
                             v.Add(new Voltage("Voltage #" + i, i, true));
@@ -2152,23 +2183,6 @@ internal sealed class SuperIOHardware : Hardware
 
                         for (int i = 0; i < superIO.Controls.Length; i++)
                             c.Add(new Control("System Fan #" + (i + 3), i));
-
-                        break;
-                    default:
-                        v.Add(new Voltage("VCC", 0, 150, 150));
-                        for (int i = 1; i < superIO.Voltages.Length; i++)
-                            v.Add(new Voltage("Voltage #" + i, i, true));
-
-                        t.Add(new Temperature("Temperature #1", 0));
-                        t.Add(new Temperature("Temperature #2", 1));
-                        if (superIO.Chip == Chip.F75387)
-                            t.Add(new Temperature("Local", 2));
-
-                        for (int i = 0; i < superIO.Fans.Length; i++)
-                            f.Add(new Fan("Fan #" + (i + 1), i));
-
-                        for (int i = 0; i < superIO.Controls.Length; i++)
-                            c.Add(new Control("Fan #" + (i + 1), i));
 
                         break;
                 }

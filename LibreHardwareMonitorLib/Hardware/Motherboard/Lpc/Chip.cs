@@ -107,9 +107,9 @@ internal class ChipName
             case Chip.F71889F: return "Fintek F71889F";
             case Chip.F71808E: return "Fintek F71808E";
 
-            case Chip.F75373S: return "Fintek F75373S/SG";
-            case Chip.F75375S: return "Fintek F75375S/SG";
-            case Chip.F75387: return "Fintek F75387SG/RG";
+            case Chip.F75373S: return "Fintek F75373SG";
+            case Chip.F75375S: return "Fintek F75375SG";
+            case Chip.F75387: return "Fintek F75387SG/F75388SG";
 
             case Chip.IT8613E: return "ITE IT8613E";
             case Chip.IT8620E: return "ITE IT8620E";
