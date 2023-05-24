@@ -2046,6 +2046,30 @@ internal sealed class SuperIOHardware : Hardware
                             c.Add(new Control("System Fan #" + i, i));
 
                         break;
+                    case Model.X79_XPower_II: // F71889AD
+                        v.Add(new Voltage("VCC3V", 0, 150, 150));
+                        v.Add(new Voltage("Vcore", 1));
+                        v.Add(new Voltage("CPU SA", 2));
+                        v.Add(new Voltage("+5V", 3, 20, 4.7f));
+                        v.Add(new Voltage("+12V", 4, 68, 6.8f));
+                        v.Add(new Voltage("DRAM A/B", 5, 150, 150));
+                        v.Add(new Voltage("DRAM C/D", 6, 150, 150));
+                        v.Add(new Voltage("+3.3V", 7, 150, 150));
+                        v.Add(new Voltage("VBat", 8, 150, 150));
+
+                        t.Add(new Temperature("CPU", 0));
+                        t.Add(new Temperature("Probe", 1));
+                        t.Add(new Temperature("System", 2));
+
+                        f.Add(new Fan("CPU Fan", 0));
+                        for (int i = 1; i < superIO.Fans.Length; i++)
+                            f.Add(new Fan("System Fan #" + i, i));
+
+                        c.Add(new Control("CPU Fan", 0));
+                        for (int i = 1; i < superIO.Controls.Length; i++)
+                            c.Add(new Control("System Fan #" + i, i));
+
+                        break;
                     default:
                         v.Add(new Voltage("VCC3V", 0, 150, 150));
                         v.Add(new Voltage("Vcore", 1));
