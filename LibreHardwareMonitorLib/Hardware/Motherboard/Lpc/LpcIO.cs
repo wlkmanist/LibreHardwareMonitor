@@ -74,7 +74,7 @@ internal class LpcIO
             if (DetectSmsc(port)) continue;
         }
 
-        ushort smb_addr = 0; // no detect at all if smb address is zero
+        ushort smb_addr = (ushort)(motherboard.Model == Model.Z77_MPower ? 0xF000 : 0);
         for (byte addr = 0x09; addr != 0;)
         {
             addr = SmBusDevice.DetectDevice((byte)(addr + 1), smb_addr);
