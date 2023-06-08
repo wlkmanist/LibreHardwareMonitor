@@ -102,7 +102,7 @@ internal class LpcIO
             case Chip.F75373S:
             case Chip.F75375S:
             case Chip.F75387:
-                _superIOs.Add(new F753XX(chip, addr, smb_addr));
+                _superIOs.Add(new F753XX(chip, tempDev));
                 break;
 
             default:

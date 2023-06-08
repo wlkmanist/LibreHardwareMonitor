@@ -4,10 +4,8 @@
 // Partial Copyright (C) Michael Möller <mmoeller@openhardwaremonitor.org> and Contributors.
 // All Rights Reserved.
 
-using System;
 using System.Management;
 using System.Threading;
-using LibreHardwareMonitor.Hardware.Motherboard.Lpc;
 
 namespace LibreHardwareMonitor.Hardware;
 
