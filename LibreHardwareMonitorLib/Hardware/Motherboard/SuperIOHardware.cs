@@ -2047,7 +2047,7 @@ internal sealed class SuperIOHardware : Hardware
             case Manufacturer.MSI:
                 switch (model)
                 {
-                    case Model.Z77_MPower: // F71889AD
+                    case Model.Z77_MS7751: // F71889AD
                         v.Add(new Voltage("VCC3V", 0, 150, 150));
                         v.Add(new Voltage("Vcore", 1));
                         v.Add(new Voltage("GPU", 2));
@@ -2071,7 +2071,7 @@ internal sealed class SuperIOHardware : Hardware
                             c.Add(new Control("System Fan #" + i, i));
 
                         break;
-                    case Model.X79_XPower_II: // F71889AD
+                    case Model.X79_MS7737: // F71889AD
                         v.Add(new Voltage("VCC3V", 0, 150, 150));
                         v.Add(new Voltage("Vcore", 1));
                         v.Add(new Voltage("CPU SA", 2));
