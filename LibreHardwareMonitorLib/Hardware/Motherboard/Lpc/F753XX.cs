@@ -65,7 +65,7 @@ internal class F753XX : ISuperIO
         if (index < 0 || index >= Controls.Length)
             throw new ArgumentOutOfRangeException(nameof(index));
 
-        if (!Ring0.WaitSmBusMutex(100))
+        if (!Mutexes.WaitSmBus(100))
             return;
 
         if (value.HasValue)
@@ -104,7 +104,7 @@ internal class F753XX : ISuperIO
             RestoreDefaultFanPwmControl(index);
         }
 
-        Ring0.ReleaseSmBusMutex();
+        Mutexes.ReleaseSmBus();
     }
 
     public string GetReport()
@@ -117,7 +117,7 @@ internal class F753XX : ISuperIO
         r.AppendLine(Dev.ChipAddr.ToString("X4", CultureInfo.InvariantCulture));
         r.AppendLine();
 
-        if (!Ring0.WaitSmBusMutex(100))
+        if (!Mutexes.WaitSmBus(100))
             return r.ToString();
 
         r.AppendLine("Hardware Monitor Registers");
@@ -141,13 +141,13 @@ internal class F753XX : ISuperIO
 
         r.AppendLine();
 
-        Ring0.ReleaseSmBusMutex();
+        Mutexes.ReleaseSmBus();
         return r.ToString();
     }
 
     public void Update()
     {
-        if (!Ring0.WaitSmBusMutex(100))
+        if (!Mutexes.WaitSmBus(100))
             return;
 
         for (int i = 0; i < Voltages.Length; i++)
@@ -185,7 +185,7 @@ internal class F753XX : ISuperIO
             Controls[i] = value * 100.0f / 0xFF;
         }
 
-        Ring0.ReleaseSmBusMutex();
+        Mutexes.ReleaseSmBus();
     }
 
     private void SaveDefaultFanPwmControl(int index)
