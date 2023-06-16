@@ -9,7 +9,7 @@ internal static class Mutexes
     private static Mutex _isaBusMutex;
     private static Mutex _pciBusMutex;
     private static Mutex _smBusMutex;
-    private static Mutex _razerDeviceMutex;
+    private static Mutex _razerMutex;
 
     /// <summary>
     /// Opens the mutexes.
@@ -20,7 +20,7 @@ internal static class Mutexes
         _pciBusMutex = CreateOrOpenExistingMutex("Global\\Access_PCI");
         _ecMutex = CreateOrOpenExistingMutex("Global\\Access_EC");
         _smBusMutex = CreateOrOpenExistingMutex("Global\\Access_SMBUS.HTP.Method");
-        _razerDeviceMutex = CreateOrOpenExistingMutex("Global\\RazerReadWriteGuardMutex");
+        _razerMutex = CreateOrOpenExistingMutex("Global\\RazerReadWriteGuardMutex");
 
         static Mutex CreateOrOpenExistingMutex(string name)
         {
@@ -53,7 +53,7 @@ internal static class Mutexes
         _pciBusMutex?.Close();
         _ecMutex?.Close();
         _smBusMutex?.Close();
-        _razerDeviceMutex?.Close();
+        _razerMutex?.Close();
     }
 
     public static bool WaitIsaBus(int millisecondsTimeout)
@@ -98,12 +98,12 @@ internal static class Mutexes
 
     public static bool WaitRazer(int millisecondsTimeout)
     {
-        return WaitMutex(_razerDeviceMutex, millisecondsTimeout);
+        return WaitMutex(_razerMutex, millisecondsTimeout);
     }
 
     public static void ReleaseRazer()
     {
-        _razerDeviceMutex?.ReleaseMutex();
+        _razerMutex?.ReleaseMutex();
     }
 
     private static bool WaitMutex(Mutex mutex, int millisecondsTimeout)

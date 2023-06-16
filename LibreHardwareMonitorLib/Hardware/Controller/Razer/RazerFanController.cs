@@ -25,7 +25,7 @@ internal sealed class RazerFanController : Hardware
     private readonly HidDevice _device;
     private readonly SequenceCounter _sequenceCounter = new();
 
-    private readonly float[] _pwm = new float[CHANNEL_COUNT];
+    private readonly float?[] _pwm = new float?[CHANNEL_COUNT];
     private readonly Sensor[] _pwmControls = new Sensor[CHANNEL_COUNT];
     private readonly Sensor[] _rpmSensors = new Sensor[CHANNEL_COUNT];
 
@@ -246,9 +246,12 @@ internal sealed class RazerFanController : Hardware
                         for (int i = 0; i < CHANNEL_COUNT; i++)
                         {
                             _pwmControls[i].Control = null;
-                            _pwmControls[i] = null;
-                            _rpmSensors[i] = null;
-                            _pwm[i] = 0;
+                            _pwmControls[i].Value = null;
+                            _rpmSensors[i].Value = null;
+                            _pwm[i] = null;
+
+                            DeactivateSensor(_pwmControls[i]);
+                            DeactivateSensor(_rpmSensors[i]);
                         }
 
                         Close();
