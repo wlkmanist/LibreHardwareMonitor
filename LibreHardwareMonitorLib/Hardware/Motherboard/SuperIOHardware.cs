@@ -2187,6 +2187,25 @@ internal sealed class SuperIOHardware : Hardware
                 switch (model)
                 {
                     // Probably all MSI boards with this chip also have the F71889AD
+                    case Model.Z68_MS7672:
+                        v.Add(new Voltage("VCC", 0, 150, 150));
+                        v.Add(new Voltage("12VIN_IMON", 0, 0, 16));
+                        v.Add(new Voltage("+12VIN", 1, 200, 20));
+                        v.Add(new Voltage("IMON", 2, 1000, 43));
+
+                        t.Add(new Temperature("Temperature #1", 0));
+                        t.Add(new Temperature("Temperature #2", 1));
+                        if (superIO.Chip == Chip.F75387)
+                            t.Add(new Temperature("Local", 2));
+
+                        for (int i = 0; i < superIO.Fans.Length; i++)
+                            f.Add(new Fan("System Fan #" + (i + 3), i));
+
+                        for (int i = 0; i < superIO.Controls.Length; i++)
+                            c.Add(new Control("System Fan #" + (i + 3), i));
+
+                        break;
+
                     default:
                         v.Add(new Voltage("VCC", 0, 150, 150));
                         for (int i = 1; i < superIO.Voltages.Length; i++)
