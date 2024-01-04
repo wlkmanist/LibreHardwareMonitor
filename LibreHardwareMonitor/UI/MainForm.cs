@@ -201,7 +201,7 @@ public sealed partial class MainForm : Form
             }
         };
 
-        _readSmbusSensors = new UserOption("smbusMenuItem", false, smbusMenuItem, _settings);
+        _readSmbusSensors = new UserOption("smbusMenuItem", true, smbusMenuItem, _settings);
         _readSmbusSensors.Changed += delegate { _computer.IsSmbusEnabled = _readSmbusSensors.Value; };
 
         _readMainboardSensors = new UserOption("mainboardMenuItem", true, mainboardMenuItem, _settings);
