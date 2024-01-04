@@ -139,6 +139,20 @@ internal class Identification
                 return Model.A320M_HDV;
             case var _ when name.Equals("P55 Deluxe", StringComparison.OrdinalIgnoreCase):
                 return Model.P55_Deluxe;
+            case var _ when name.Equals("A8SR", StringComparison.OrdinalIgnoreCase):    // IT8511TE
+            case var _ when name.Equals("A8SN", StringComparison.OrdinalIgnoreCase):
+            case var _ when name.Equals("A8Sc", StringComparison.OrdinalIgnoreCase):
+            case var _ when name.Equals("A8Sg", StringComparison.OrdinalIgnoreCase):
+            case var _ when name.Equals("A8Se", StringComparison.OrdinalIgnoreCase):
+            case var _ when name.Equals("A8E",  StringComparison.OrdinalIgnoreCase):
+            case var _ when name.Equals("F8SG", StringComparison.OrdinalIgnoreCase):
+            case var _ when name.Equals("F8SN", StringComparison.OrdinalIgnoreCase):
+            case var _ when name.Equals("F8SV", StringComparison.OrdinalIgnoreCase):
+            case var _ when name.Equals("F8Sr", StringComparison.OrdinalIgnoreCase):
+            case var _ when name.Equals("F8Se", StringComparison.OrdinalIgnoreCase):
+            case var _ when name.Equals("F8Sa", StringComparison.OrdinalIgnoreCase):
+            case var _ when name.Equals("F8SP", StringComparison.OrdinalIgnoreCase):
+                return Model.A8S;
             case var _ when name.Equals("Crosshair III Formula", StringComparison.OrdinalIgnoreCase):
                 return Model.CROSSHAIR_III_FORMULA;
             case var _ when name.Equals("ROG CROSSHAIR VIII HERO", StringComparison.OrdinalIgnoreCase):
