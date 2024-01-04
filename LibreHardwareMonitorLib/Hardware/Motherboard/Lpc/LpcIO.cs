@@ -74,41 +74,6 @@ internal class LpcIO
 
             if (DetectSmsc(port)) continue;
         }
-
-        ushort smb_addr = SmBusDevice.DetectSmBus();
-        for (byte addr = 0x09; addr != 0;)
-        {
-            addr = SmBusDevice.DetectDevice((byte)(addr + 1), smb_addr);
-            if (addr != 0)
-            {
-                if (DetectFintekF753XX(addr, smb_addr)) continue;
-            }
-        }
-    }
-
-    private bool DetectFintekF753XX(byte addr, ushort smb_addr)
-    {
-        SmBusDevice tempDev = new SmBusDevice(addr, smb_addr);
-
-        // read word don't work for this chip, or for target hardware
-        ushort vid = (ushort)((tempDev.ReadByte(FINTEK_VENDOR_ID_SMBUS_REGISTER) << 8) | tempDev.ReadByte(FINTEK_VENDOR_ID_SMBUS_REGISTER + 1));
-        if (vid != FINTEK_VENDOR_ID)
-            return false; // this is not a Fintek device
-
-        Chip chip = (Chip)((tempDev.ReadByte(CHIP_ID_SMBUS_REGISTER) << 8) | tempDev.ReadByte(CHIP_ID_SMBUS_REGISTER + 1));
-
-        switch (chip)
-        {
-            case Chip.F75373S:
-            case Chip.F75375S:
-            case Chip.F75387:
-                _superIOs.Add(new F753XX(chip, tempDev));
-                break;
-
-            default:
-                return false;
-        }
-        return true;
     }
 
         public string GetReport()
@@ -757,10 +722,6 @@ internal class LpcIO
 
     private readonly ushort[] REGISTER_PORTS = { 0x2E, 0x4E };
     private readonly ushort[] VALUE_PORTS = { 0x2F, 0x4F };
-
-    // SMBus
-    private const byte CHIP_ID_SMBUS_REGISTER = 0x5A;
-    private const byte FINTEK_VENDOR_ID_SMBUS_REGISTER = 0x5D;
 
     // ReSharper restore InconsistentNaming
 }
