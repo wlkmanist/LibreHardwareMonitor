@@ -27,6 +27,13 @@ internal enum Chip : ushort
     F71889ED = 0x0909,
     F71889F = 0x0723,
 
+    IT8502E = 0x8502,
+    IT8511E = 0x8511,
+    IT8512E = 0x8512,
+    IT8516E = 0x8516,
+    IT8518E = 0x8518,
+    IT8519E = 0x8519,
+    IT8528E = 0x8528,
     IT8613E = 0x8613,
     IT8620E = 0x8620,
     IT8625E = 0x8625,
@@ -111,6 +118,13 @@ internal class ChipName
             case Chip.F75375S: return "Fintek F75375SG";
             case Chip.F75387: return "Fintek F75387SG/F75388SG";
 
+            case Chip.IT8502E: return "ITE IT8502E";
+            case Chip.IT8511E: return "ITE IT8511E";
+            case Chip.IT8512E: return "ITE IT8512E";
+            case Chip.IT8516E: return "ITE IT8516E";
+            case Chip.IT8518E: return "ITE IT8518E";
+            case Chip.IT8519E: return "ITE IT8519E";
+            case Chip.IT8528E: return "ITE IT8528E";
             case Chip.IT8613E: return "ITE IT8613E";
             case Chip.IT8620E: return "ITE IT8620E";
             case Chip.IT8625E: return "ITE IT8625E";
