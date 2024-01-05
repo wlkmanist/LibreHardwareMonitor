@@ -74,9 +74,18 @@ internal class LpcIO
 
             if (DetectSmsc(port)) continue;
         }
+
+        // IT85xx
+        for (int i = 0; i < REGISTER_PORTS_ADDITIONAL.Length; i++)
+        {
+            var port = new LpcPort(REGISTER_PORTS_ADDITIONAL[i], VALUE_PORTS_ADDITIONAL[i]);
+
+            if (DetectIT87(port, motherboard)) continue;
+        }
+
     }
 
-        public string GetReport()
+    public string GetReport()
     {
         if (_report.Length > 0)
         {
@@ -534,7 +543,8 @@ internal class LpcIO
     {
         // IT87XX can enter only on port 0x2E
         // IT8792 using 0x4E
-        if (port.RegisterPort is not 0x2E and not 0x4E)
+        // IT85XX sometimes using 0x25E or 0x29C
+        if (port.RegisterPort is not 0x2E and not 0x4E and not 0x25E and not 0x29C)
             return false;
 
         port.IT87Enter();
@@ -542,6 +552,15 @@ internal class LpcIO
         ushort chipId = port.ReadWord(CHIP_ID_REGISTER);
         Chip chip = chipId switch
         {
+            0x8502 => Chip.IT8502E,
+            0x8510 => Chip.IT8510E,
+            0x8511 => Chip.IT8511E,
+            0x8512 => Chip.IT8512E,
+            0x8513 => Chip.IT8513E,
+            0x8516 => Chip.IT8516E,
+            0x8518 => Chip.IT8518E,
+            0x8519 => Chip.IT8519E,
+            0x8528 => Chip.IT8528E,
             0x8613 => Chip.IT8613E,
             0x8620 => Chip.IT8620E,
             0x8625 => Chip.IT8625E,
@@ -590,6 +609,7 @@ internal class LpcIO
             ushort gpioAddress;
             ushort gpioVerify;
 
+            // ! IT85XX don't have GPIO LDN, GPIO access via shared mem, offset: 1600h
             if (chip == Chip.IT8705F)
             {
                 port.Select(IT8705_GPIO_LDN);
@@ -722,6 +742,9 @@ internal class LpcIO
 
     private readonly ushort[] REGISTER_PORTS = { 0x2E, 0x4E };
     private readonly ushort[] VALUE_PORTS = { 0x2F, 0x4F };
+
+    private readonly ushort[] REGISTER_PORTS_ADDITIONAL = { 0x25E, 0x29C };
+    private readonly ushort[] VALUE_PORTS_ADDITIONAL = { 0x25F, 0x29D };
 
     // ReSharper restore InconsistentNaming
 }
