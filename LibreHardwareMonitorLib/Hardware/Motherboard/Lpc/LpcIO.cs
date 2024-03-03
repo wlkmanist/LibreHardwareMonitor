@@ -539,15 +539,13 @@ internal class LpcIO
         return false;
     }
 
-    private bool DetectIT87(LpcPort port, Motherboard motherboard)
+    private bool DetectIT85(LpcPort port, Motherboard motherboard)
     {
-        // IT87XX can enter only on port 0x2E
-        // IT8792 using 0x4E
-        // IT85XX sometimes using 0x25E or 0x29C
-        if (port.RegisterPort is not 0x2E and not 0x4E and not 0x25E and not 0x29C)
+        // IT85XX sometimes using 0x25E or 0x29E if BADDR[1-0] strap is 1-0
+        if (port.RegisterPort is not 0x2E and not 0x4E and not 0x25E and not 0x29E)
             return false;
 
-        port.IT87Enter();
+        port.IT85Enter();
 
         ushort chipId = port.ReadWord(CHIP_ID_REGISTER);
         Chip chip = chipId switch
@@ -561,6 +559,97 @@ internal class LpcIO
             0x8518 => Chip.IT8518E,
             0x8519 => Chip.IT8519E,
             0x8528 => Chip.IT8528E,
+            _ => Chip.Unknown
+        };
+
+        if (chip == Chip.Unknown)
+        {
+            if (chipId is not 0 and not 0xffff)
+            {
+                port.IT85Exit();
+
+                if ((((ushort)chip >> 8) & 0xFF) == 0x85)
+                    ReportUnknownChip(port, "ITE", chipId);
+            }
+        }
+        else
+        {
+            port.Select(IT87XX_SMFI_LDN);
+
+            // Check if the SMFI logical device is enabled
+            byte enabled = port.ReadByte(IT87_LD_ACTIVE_REGISTER);
+            Thread.Sleep(1);
+            byte enabledVerify = port.ReadByte(IT87_LD_ACTIVE_REGISTER);
+
+            // The EC has no SMFI or it's RAM access is not enabled
+            if (enabled != enabledVerify || enabled == 0)
+            {
+                _report.Append("Chip ID: 0x");
+                _report.AppendLine(chip.ToString("X"));
+                _report.Append("Error: No SFMI");
+                _report.AppendLine();
+
+                return false;
+            }
+
+            ////////////////////////////////////////////////////////////
+
+            uint addressHi = 0;
+            uint addressHiVerify = 0;
+            uint address = port.ReadWord(IT87_SMFI_HLPC_RAM_BASE_ADDRESS_REGISTER);
+            if (chip == Chip.IT87952E)
+                addressHi = port.ReadByte(IT87_SMFI_HLPC_RAM_BASE_ADDRESS_REGISTER_HIGH);
+
+            Thread.Sleep(1);
+            uint addressVerify = port.ReadWord(IT87_SMFI_HLPC_RAM_BASE_ADDRESS_REGISTER);
+            if (chip == Chip.IT87952E)
+                addressHiVerify = port.ReadByte(IT87_SMFI_HLPC_RAM_BASE_ADDRESS_REGISTER_HIGH);
+
+            if ((address != addressVerify) || (addressHi != addressHiVerify))
+            {
+                _report.Append("Chip ID: 0x");
+                _report.AppendLine(chip.ToString("X"));
+                _report.Append("Error: Invalid address 0x");
+                _report.AppendLine(address.ToString("X", CultureInfo.InvariantCulture));
+                _report.AppendLine();
+
+                return false;
+            }
+
+            // Address is xryy, Host Address is FFyyx000
+            // For IT87952E, Address is rzxryy, Host Address is (0xFC000000 | 0x0zyyx000)
+            uint hostAddress;
+            if (chip == Chip.IT87952E)
+                hostAddress = 0xFC000000;
+            else
+                hostAddress = 0xFF000000;
+
+            hostAddress |= (address & 0xF000) | ((address & 0xFF) << 16) | ((addressHi & 0xF) << 24);
+
+
+
+
+            port.IT85Exit();
+
+            _superIOs.Add(new IT85XX(chip, address, gpioAddress, version, motherboard, gigabyteController));
+            return true;
+        }
+
+        return false;
+    }
+
+    private bool DetectIT87(LpcPort port, Motherboard motherboard)
+    {
+        // IT87XX can enter only on port 0x2E
+        // IT8792 using 0x4E
+        if (port.RegisterPort is not 0x2E and not 0x4E)
+            return false;
+
+        port.IT87Enter();
+
+        ushort chipId = port.ReadWord(CHIP_ID_REGISTER);
+        Chip chip = chipId switch
+        {
             0x8613 => Chip.IT8613E,
             0x8620 => Chip.IT8620E,
             0x8625 => Chip.IT8625E,
@@ -593,7 +682,8 @@ internal class LpcIO
             {
                 port.IT87Exit();
 
-                ReportUnknownChip(port, "ITE", chipId);
+                if ((((ushort)chip >> 8) & 0xFF) != 0x85)
+                    ReportUnknownChip(port, "ITE", chipId);
             }
         }
         else
@@ -743,8 +833,8 @@ internal class LpcIO
     private readonly ushort[] REGISTER_PORTS = { 0x2E, 0x4E };
     private readonly ushort[] VALUE_PORTS = { 0x2F, 0x4F };
 
-    private readonly ushort[] REGISTER_PORTS_ADDITIONAL = { 0x25E, 0x29C };
-    private readonly ushort[] VALUE_PORTS_ADDITIONAL = { 0x25F, 0x29D };
+    private readonly ushort[] REGISTER_PORTS_ADDITIONAL = { 0x25E, 0x29E };
+    private readonly ushort[] VALUE_PORTS_ADDITIONAL = { 0x25F, 0x29F };
 
     // ReSharper restore InconsistentNaming
 }

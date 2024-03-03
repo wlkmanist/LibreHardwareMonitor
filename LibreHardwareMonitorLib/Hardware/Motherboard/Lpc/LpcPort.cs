@@ -63,6 +63,19 @@ internal class LpcPort
         }
     }
 
+    public void IT85Enter()
+    {
+        Ring0.WriteIoPort(RegisterPort, 0x85);
+        Ring0.WriteIoPort(RegisterPort, 0x02);
+        Ring0.WriteIoPort(RegisterPort, 0x55);
+        Ring0.WriteIoPort(RegisterPort, RegisterPort == 0x4E ? (byte)0xAA : (byte)0x55);
+    }
+
+    public void IT85Exit()
+    {
+        IT87Exit();
+    }
+
     public void IT87Enter()
     {
         Ring0.WriteIoPort(RegisterPort, 0x87);
