@@ -60,6 +60,12 @@ public interface IComputer : IElement
     ///     <item>
     ///         <see cref="Controller.Nzxt.NzxtGroup" />
     ///     </item>
+    ///     <item>
+    ///         <see cref="Controller.Razer.RazerGroup" />
+    ///     </item>
+    ///     <item>
+    ///         <see cref="Controller.ProjectBlack.ProjectBlackGroup" />
+    ///     </item>
     /// </list>
     /// devices should be enabled and updated.
     /// </summary>
