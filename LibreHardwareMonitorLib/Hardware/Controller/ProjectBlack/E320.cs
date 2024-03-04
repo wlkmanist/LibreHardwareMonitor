@@ -11,6 +11,8 @@ using System;
 using System.IO;
 using System.IO.Ports;
 using System.Threading;
+using LibreHardwareMonitor.Hardware.Motherboard;
+using static LibreHardwareMonitor.Interop.Kernel32;
 
 namespace LibreHardwareMonitor.Hardware.Controller.ProjectBlack;
 
@@ -23,6 +25,7 @@ internal sealed class E320 : Hardware
     private const byte REG_TOFFSET =	0x0A; // byte, rw, Temp offset integer
     private const byte REG_FAN_MODE	=   0x0B; // byte, rw, undefined
     private const byte REG_FAN_DEF_PWM= 0x0C; // byte, rw, default fan control pwm
+    private const byte REG_CFG =        0x0D; // byte, rw, advanced config bits (see description)
     private const byte REG_DEVRESET	=   0x0E; // byte, wo, software reboot device
     private const byte REG_BAUDRATE	=   0x0F; // byte, rw, current baud rate preset
     private const byte REG_TZ =		    0x10; // word, ro, Thermal Sensor #0 (MSB contains integer (+ REG_TOFFSET) degree, LSB contains 1/256 degree)
@@ -48,6 +51,7 @@ internal sealed class E320 : Hardware
     private readonly byte _tempOffset;
     private bool _available = false;
     private byte _reconnectTicker = 0;
+    private byte _currentPage = 0;
 
     public E320(SerialPort port, ushort pid, byte rev, ISettings settings)
         : base("project.black E320 Series", new Identifier("serial", port.PortName), settings)
@@ -66,8 +70,11 @@ internal sealed class E320 : Hardware
             // Read config regs
             _tempOffset  = readRegByte(REG_TOFFSET);
             int tzCount  = Math.Min(readRegByte(REG_TZ_COUNT),  (byte)6);
-            int rtzCount = Math.Min(readRegByte(REG_RTZ_COUNT), (byte)1);
+            int rtzCount = Math.Min(readRegByte(REG_RTZ_COUNT), (byte)4);
             int fanCount = Math.Min(readRegByte(REG_FAN_COUNT), (byte)8);
+
+            _currentPage = readRegByte(REG_CFG);
+            setRegPage(0);                    // set page to default
 
             _temperatures = new Sensor[tzCount];
             for (int i = 0; i < tzCount; i++) // TZ
@@ -86,7 +93,7 @@ internal sealed class E320 : Hardware
             for (int i = 0; i < rtzCount; i++) // RTZ
             {
                 _temperaturesRemote[i] = new Sensor("Oregon Temperature #" + (i + 1),
-                                                i,
+                                                tzCount + i,
                                                 SensorType.Temperature,
                                                 this,
                                                 new[] { new ParameterDescription("Offset [°C]", "Temperature offset.", 0) },
@@ -177,7 +184,9 @@ internal sealed class E320 : Hardware
                 _port.DiscardOutBuffer();
             }
 
-            for (int i = 0; i < _temperatures.Length; i++) // TZ
+            setRegPage(0);                                  // set page to default
+
+            for (int i = 0; i < _temperatures.Length; i++)  // TZ
             {
                 byte msb = readRegByte((byte)(REG_TZ + i * 2));
                 byte lsb = readRegByte((byte)(REG_TZ + i * 2 + 1));
@@ -196,8 +205,17 @@ internal sealed class E320 : Hardware
 
             for (int i = 0; i < _temperaturesRemote.Length; i++) // RTZ
             {
-                byte msb = readRegByte((byte)(REG_RTZ + i * 4));
-                byte lsb = readRegByte((byte)(REG_RTZ + i * 4 + 1));
+                byte reg = (byte)(REG_RTZ + i * 4);
+                byte page = (byte)((reg - 0x10) / 0x10);    // check if we need to set later an additional reg page
+                reg = (byte)(((reg - 0x10) % 0x10) + 0x10); // set reg addr to [0x10-0x1F] range
+
+                if (page > 1)                               // only one additional reg page available
+                    continue;
+
+                setRegPage(page);
+
+                byte msb = readRegByte(reg);
+                byte lsb = readRegByte((byte)(reg + 1));
                 float temp = msb - _tempOffset + lsb / 256.0f;
 
                 if (msb != 0xFF && msb != 0x00)
@@ -210,8 +228,9 @@ internal sealed class E320 : Hardware
                     _temperaturesRemote[i].Value = null;
                 }
             }
+            setRegPage(0);                                  // set page to default
 
-            for (int i = 0; i < _chargeLevel.Length; i++) // RTZ battery
+            for (int i = 0; i < _chargeLevel.Length; i++)   // RTZ battery
             {
                 byte data = readRegByte((byte)(REG_RBATTERY + i * 4));
 
@@ -322,6 +341,17 @@ internal sealed class E320 : Hardware
             writeRegByte((byte)(REG_FAN_PWM + control.Sensor.Index), value);
 
             _controls[control.Sensor.Index].Value = value;
+        }
+    }
+
+    private void setRegPage(byte page)
+    {
+        page = (byte)(page & 0x01);
+
+        if (page != _currentPage)
+        {
+            writeRegByte(REG_CFG, page);
+            _currentPage = page;
         }
     }
 
