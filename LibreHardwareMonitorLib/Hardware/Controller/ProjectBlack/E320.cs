@@ -5,22 +5,13 @@
 // All Rights Reserved.
 
 using System;
-using System.Globalization;
 using System.IO;
 using System.IO.Ports;
-using System.Linq;
-using System.Security.Cryptography;
-using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading;
-using HidSharp;
-using HidSharp.Reports;
-
-//using static LibreHardwareMonitor.Hardware.Controller.ProjectBlack.ProjectBlackGroup;
 
 namespace LibreHardwareMonitor.Hardware.Controller.ProjectBlack;
 
-internal sealed class E320 : Hardware, IDisposable
+internal sealed class E320 : Hardware
 {
     private const byte REG_TZ_COUNT =   0x01;
     private const byte REG_FAN_COUNT =	0x02;
@@ -49,10 +40,10 @@ internal sealed class E320 : Hardware, IDisposable
     //private readonly Sensor[] _fans;
     //private readonly Sensor[] _controls;
     private readonly byte _tempOffset;
-    private readonly bool _available;
+    private bool _available = false;
+    private byte _reconnectTicker = 0;
 
-
-    public E320(SerialPort port, ushort pid, byte rev, ISettings settings) : base("project.black Device", new Identifier("projectblack", port.PortName), settings)
+    public E320(SerialPort port, ushort pid, byte rev, ISettings settings) : base("project.black E320 Series", new Identifier("serial", port.PortName), settings)
     {
         _port = port;
         try
@@ -86,32 +77,26 @@ internal sealed class E320 : Hardware, IDisposable
             _temperatures = new Sensor[tzCount];
             for (int i = 0; i < tzCount; i++) // TZ
             {
-                _temperatures[i] = new Sensor("NTC Temperature #" + i, i, SensorType.Temperature, this, settings);
+                _temperatures[i] = new Sensor("NTC Temperature #" + i,
+                                                i,
+                                                SensorType.Temperature,
+                                                this,
+                                                new[] { new ParameterDescription("Offset [°C]", "Temperature offset.", 0) },
+                                                settings);
 
-                byte msb = readRegByte((byte)(REG_TZ + i * 2));
-                byte lsb = readRegByte((byte)(REG_TZ + i * 2 + 1));
-                float temp = msb - _tempOffset + lsb / 256.0f;
-
-                _temperatures[i].Value = temp;
-                if (msb != 0xFF && msb != 0x00)
-                    ActivateSensor(_temperatures[i]);
-                else
-                    DeactivateSensor(_temperatures[i]);
+                DeactivateSensor(_temperatures[i]);             // activate later in Update() if sensor is actually connected
             }
             _temperaturesRemote = new Sensor[rtzCount];
             for (int i = 0; i < rtzCount; i++) // RTZ
             {
-                _temperaturesRemote[i] = new Sensor("Oregon Sensor #" + i, tzCount + i, SensorType.Temperature, this, settings);
+                _temperaturesRemote[i] = new Sensor("Oregon Sensor #" + i,
+                                                tzCount + i,
+                                                SensorType.Temperature,
+                                                this,
+                                                new[] { new ParameterDescription("Offset [°C]", "Temperature offset.", 0) },
+                                                settings);
 
-                byte msb = readRegByte((byte)(REG_RTZ + i * 2));
-                byte lsb = readRegByte((byte)(REG_RTZ + i * 2 + 1));
-                float temp = msb - _tempOffset + lsb / 256.0f;
-
-                _temperaturesRemote[i].Value = temp;
-                if (msb != 0xFF && msb != 0x00)
-                    ActivateSensor(_temperaturesRemote[i]);
-                else
-                    DeactivateSensor(_temperaturesRemote[i]);
+                DeactivateSensor(_temperaturesRemote[i]);       // activate later in Update() if sensor is actually connected
             }
 
             /// set the update rate to 2 Hz
@@ -136,8 +121,10 @@ internal sealed class E320 : Hardware, IDisposable
 
         try
         {
-            if (!_port.IsOpen)
+            if (!_port.IsOpen || _reconnectTicker > 0)
             {
+                _reconnectTicker = 0;
+
                 // Init
                 _port.Open();
                 Thread.Sleep(10);
@@ -151,29 +138,73 @@ internal sealed class E320 : Hardware, IDisposable
                 byte lsb = readRegByte((byte)(REG_TZ + i * 2 + 1));
                 float temp = msb - _tempOffset + lsb / 256.0f;
 
-                _temperatures[i].Value = temp;
                 if (msb != 0xFF && msb != 0x00)
+                {
+                    //_temperatures[i].Value = temp;
+                    _temperatures[i].Value = temp + _temperatures[i].Parameters[0].Value; // temp with offset parameter
                     ActivateSensor(_temperatures[i]);
+                }
                 else
-                    DeactivateSensor(_temperatures[i]);
+                {
+                    _temperatures[i].Value = null;
+                }
             }
+
             for (int i = 0; i < _temperaturesRemote.Length; i++) // RTZ
             {
                 byte msb = readRegByte((byte)(REG_RTZ + i * 2));
                 byte lsb = readRegByte((byte)(REG_RTZ + i * 2 + 1));
                 float temp = msb - _tempOffset + lsb / 256.0f;
 
-                _temperaturesRemote[i].Value = temp;
-                if (msb != 0xFF && msb != 0x00)
-                    ActivateSensor(_temperaturesRemote[i]);
-                else
-                    DeactivateSensor(_temperaturesRemote[i]);
+                    if (msb != 0xFF && msb != 0x00)
+                    {
+                        //_temperaturesRemote[i].Value = temp;
+                        _temperaturesRemote[i].Value = temp + _temperaturesRemote[i].Parameters[0].Value; // temp with offset parameter
+                        ActivateSensor(_temperaturesRemote[i]);
+                    }
+                    else
+                    {
+                        _temperaturesRemote[i].Value = null;
+                    }
+                }
+            }
+        catch (IOException)
+        {
+            if (_port.IsOpen)
+            {
+                try
+                {
+                    _port.Close(); // Close to reinit in code above, device temporary disconnected
+                }
+                catch(IOException)
+                { }
+
+                if (_reconnectTicker < 1)
+                {
+                    Thread.Sleep(5000);
+                    _reconnectTicker++;
+                }
+                else // device permanently disconnected
+                {
+                    for (int i = 0; i < _temperatures.Length; i++) // TZ
+                        _temperatures[i].Value = null;
+                    for (int i = 0; i < _temperaturesRemote.Length; i++) // RTZ
+                        _temperaturesRemote[i].Value = null;
+
+                    _available = false;
+                    Close();
+                }
             }
         }
-        catch (IOException)
-        { }
         catch (TimeoutException)
-        { }
+        {
+            try
+            {
+                _port.Close(); // Close to reinit in code above, device is frozen or after reset
+            }
+            catch (IOException)
+            { }
+        }
     }
 
     private byte readRegByte(byte addr)
@@ -217,7 +248,8 @@ internal sealed class E320 : Hardware, IDisposable
 
     public override void Close()
     {
-        _port.Close();
+        if (_port.IsOpen)
+            _port.Close();
         _port.Dispose();
         _port = null;
         base.Close();
