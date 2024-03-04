@@ -18,10 +18,9 @@ namespace LibreHardwareMonitor.Hardware.Controller.ProjectBlack;
 
 internal sealed class E320 : Hardware
 {
-    private const byte REG_TZ_COUNT =   0x01; // byte, ro, TZ count (6 max)
+    private const byte REG_TZ_COUNT =   0x01; // byte, ro, TZ count (6 max) ([7] bit - local temp, [4-6] bit - RTZ (3 max), [0-3] bit - TZ)
     private const byte REG_FAN_COUNT =	0x02; // byte, ro, PWM/Tacho count
-    private const byte REG_VINT_COUNT =	0x03; // byte, ro, Vsense count (2 max)
-    private const byte REG_RTZ_COUNT =	0x04; // byte, ro, Remote TZ count (1 max)
+    private const byte REG_VINT_COUNT =	0x03; // byte, ro, Vsense count (2 max) ([7] bit - internal Vcc, [0-6] bit - external Vsense)
     private const byte REG_TOFFSET =	0x0A; // byte, rw, Temp offset integer
     private const byte REG_FAN_MODE	=   0x0B; // byte, rw, undefined
     private const byte REG_FAN_DEF_PWM= 0x0C; // byte, rw, default fan control pwm
@@ -69,31 +68,46 @@ internal sealed class E320 : Hardware
 
             // Read config regs
             _tempOffset  = readRegByte(REG_TOFFSET);
-            int tzCount  = Math.Min(readRegByte(REG_TZ_COUNT),  (byte)6);
-            int rtzCount = Math.Min(readRegByte(REG_RTZ_COUNT), (byte)4);
+            int tzCount  = Math.Min(readRegByte(REG_TZ_COUNT) & 0x0F, 6);
+            int rtzCount = Math.Min(((readRegByte(REG_TZ_COUNT) & 0x70) >> 4) & 0x07, 4);
+            int tzLocal  = Math.Min(((readRegByte(REG_TZ_COUNT) & 0x80) >> 7) & 0x01, 1);
             int fanCount = Math.Min(readRegByte(REG_FAN_COUNT), (byte)8);
+            int vCount   = Math.Min(readRegByte(REG_VINT_COUNT) & 0x7F, 6);
+            int vccLocal = Math.Min(readRegByte(REG_VINT_COUNT) & 0x80, 1);
 
             _currentPage = readRegByte(REG_CFG);
             setRegPage(0);                    // set page to default
 
-            _temperatures = new Sensor[tzCount];
-            for (int i = 0; i < tzCount; i++) // TZ
+            _temperatures = new Sensor[tzCount + tzLocal];
+            if (tzLocal == 1)                  // MCU internal thermal sensor
             {
-                _temperatures[i] = new Sensor("NTC Temperature #" + (i + 1),
-                                                i,
+                _temperatures[0] = new Sensor("Local",
+                                                0,
                                                 SensorType.Temperature,
                                                 this,
                                                 new[] { new ParameterDescription("Offset [°C]", "Temperature offset.", 0) },
                                                 settings);
 
-                DeactivateSensor(_temperatures[i]);             // activate later in Update() if sensor is actually connected
+                DeactivateSensor(_temperatures[0]);             // activate later in Update() if sensor is actually connected
+            }
+
+            for (int i = 0; i < tzCount; i++) // TZ
+            {
+                _temperatures[i + tzLocal] = new Sensor("NTC Temperature #" + (i + 1),
+                                                tzLocal + i,
+                                                SensorType.Temperature,
+                                                this,
+                                                new[] { new ParameterDescription("Offset [°C]", "Temperature offset.", 0) },
+                                                settings);
+
+                DeactivateSensor(_temperatures[i + tzLocal]);   // activate later in Update() if sensor is actually connected
             }
 
             _temperaturesRemote = new Sensor[rtzCount];
             for (int i = 0; i < rtzCount; i++) // RTZ
             {
                 _temperaturesRemote[i] = new Sensor("Oregon Temperature #" + (i + 1),
-                                                tzCount + i,
+                                                tzLocal + tzCount + i,
                                                 SensorType.Temperature,
                                                 this,
                                                 new[] { new ParameterDescription("Offset [°C]", "Temperature offset.", 0) },
