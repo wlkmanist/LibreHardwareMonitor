@@ -4,6 +4,9 @@
 // Partial Copyright (C) Michael Möller <mmoeller@openhardwaremonitor.org> and Contributors.
 // All Rights Reserved.
 
+// project.black E320 series.
+// By wlkmanist, 2023-2024.
+
 using System;
 using System.IO;
 using System.IO.Ports;

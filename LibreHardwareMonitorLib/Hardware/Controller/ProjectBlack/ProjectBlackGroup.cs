@@ -4,6 +4,9 @@
 // Partial Copyright (C) Michael Möller <mmoeller@openhardwaremonitor.org> and Contributors.
 // All Rights Reserved.
 
+// project.black devices.
+// By wlkmanist, 2023-2024.
+
 using System;
 using System.Collections.Generic;
 using System.Drawing;
