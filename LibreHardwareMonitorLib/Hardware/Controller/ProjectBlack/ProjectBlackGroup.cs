@@ -52,7 +52,7 @@ internal class ProjectBlackGroup : IGroup
 
                 if (serialPort.IsOpen)
                 {
-                    Thread.Sleep(10);
+                    Thread.Sleep(20);
                     serialPort.DiscardInBuffer();
                     serialPort.DiscardOutBuffer();
 

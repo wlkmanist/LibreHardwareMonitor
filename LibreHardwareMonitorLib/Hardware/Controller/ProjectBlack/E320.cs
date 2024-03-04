@@ -53,7 +53,7 @@ internal sealed class E320 : Hardware
         {
             // Init
             _port.Open();
-            Thread.Sleep(10);
+            Thread.Sleep(20);
             _port.DiscardInBuffer();
             _port.DiscardOutBuffer();
 
@@ -130,7 +130,7 @@ internal sealed class E320 : Hardware
 
                 // Init
                 _port.Open();
-                Thread.Sleep(10);
+                Thread.Sleep(20);
                 _port.DiscardInBuffer();
                 _port.DiscardOutBuffer();
             }
@@ -203,7 +203,8 @@ internal sealed class E320 : Hardware
         {
             try
             {
-                _port.Close(); // Close to reinit in code above, device is frozen or after reset
+                if (_port.IsOpen)
+                    _port.Close(); // Close to reinit in code above, device is frozen or after reset
             }
             catch (IOException)
             { }
