@@ -41,6 +41,7 @@ internal sealed class E320 : Hardware
     private readonly Sensor[] _temperatures;
     private readonly Sensor[] _temperaturesRemote;
     private readonly Sensor[] _chargeLevel;
+    private readonly Sensor[] _humidityLevel;
     //private readonly Sensor[] _fans;
     //private readonly Sensor[] _controls;
     private readonly byte _tempOffset;
@@ -91,10 +92,11 @@ internal sealed class E320 : Hardware
 
                 DeactivateSensor(_temperatures[i]);             // activate later in Update() if sensor is actually connected
             }
+
             _temperaturesRemote = new Sensor[rtzCount];
             for (int i = 0; i < rtzCount; i++) // RTZ
             {
-                _temperaturesRemote[i] = new Sensor("Oregon Sensor #" + i,
+                _temperaturesRemote[i] = new Sensor("Oregon Temperature #" + i,
                                                 tzCount + i,
                                                 SensorType.Temperature,
                                                 this,
@@ -107,8 +109,15 @@ internal sealed class E320 : Hardware
             _chargeLevel = new Sensor[rtzCount];
             for (int i = 0; i < rtzCount; i++) // RTZ battery
             {
-                _chargeLevel[i] = new Sensor("Oregon Sensor Charge #" + i, tzCount + rtzCount + i, SensorType.Level, this, settings);
+                _chargeLevel[i] = new Sensor("Oregon Charge Level #" + i, tzCount + rtzCount + i, SensorType.Level, this, settings);
                 DeactivateSensor(_chargeLevel[i]);
+            }
+
+            _humidityLevel = new Sensor[rtzCount];
+            for (int i = 0; i < rtzCount; i++) // RTZ humidity
+            {
+                _humidityLevel[i] = new Sensor("Oregon Humidity Level #" + i, tzCount + rtzCount * 2 + i, SensorType.Humidity, this, settings);
+                DeactivateSensor(_humidityLevel[i]);
             }
 
             /// set the update rate to 2 Hz
@@ -192,6 +201,21 @@ internal sealed class E320 : Hardware
                 else
                 {
                     _chargeLevel[i].Value = null;
+                }
+            }
+
+            for (int i = 0; i < _humidityLevel.Length; i++) // RTZ humidity
+            {
+                byte data = readRegByte((byte)(REG_RHUMIDITY + i * 2));
+
+                if (data != 0xFF)
+                {
+                    _humidityLevel[i].Value = data;
+                    ActivateSensor(_humidityLevel[i]);
+                }
+                else
+                {
+                    _humidityLevel[i].Value = null;
                 }
             }
         }
