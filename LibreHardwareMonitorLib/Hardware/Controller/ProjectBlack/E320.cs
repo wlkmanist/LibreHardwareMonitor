@@ -22,6 +22,7 @@ internal sealed class E320 : Hardware
     private const byte REG_RTZ_COUNT =	0x04; // byte, ro, Remote TZ count (1 max)
     private const byte REG_TOFFSET =	0x0A; // byte, rw, Temp offset integer
     private const byte REG_FAN_MODE	=   0x0B; // byte, rw, undefined
+    private const byte REG_FAN_DEF_PWM= 0x0C; // byte, rw, default fan control pwm
     private const byte REG_DEVRESET	=   0x0E; // byte, wo, software reboot device
     private const byte REG_BAUDRATE	=   0x0F; // byte, rw, current baud rate preset
     private const byte REG_TZ =		    0x10; // word, ro, Thermal Sensor #0 (MSB contains integer (+ REG_TOFFSET) degree, LSB contains 1/256 degree)
@@ -71,7 +72,7 @@ internal sealed class E320 : Hardware
             _temperatures = new Sensor[tzCount];
             for (int i = 0; i < tzCount; i++) // TZ
             {
-                _temperatures[i] = new Sensor("NTC Temperature #" + i,
+                _temperatures[i] = new Sensor("NTC Temperature #" + (i + 1),
                                                 i,
                                                 SensorType.Temperature,
                                                 this,
@@ -84,8 +85,8 @@ internal sealed class E320 : Hardware
             _temperaturesRemote = new Sensor[rtzCount];
             for (int i = 0; i < rtzCount; i++) // RTZ
             {
-                _temperaturesRemote[i] = new Sensor("Oregon Temperature #" + i,
-                                                tzCount + i,
+                _temperaturesRemote[i] = new Sensor("Oregon Temperature #" + (i + 1),
+                                                i,
                                                 SensorType.Temperature,
                                                 this,
                                                 new[] { new ParameterDescription("Offset [°C]", "Temperature offset.", 0) },
@@ -97,10 +98,11 @@ internal sealed class E320 : Hardware
             _chargeLevel = new Sensor[rtzCount];
             for (int i = 0; i < rtzCount; i++) // RTZ battery
             {
-                _chargeLevel[i] = new Sensor("Oregon Charge Level #" + i,
-                                                tzCount + rtzCount + i,
+                _chargeLevel[i] = new Sensor("Oregon Charge Level #" + (i + 1),
+                                                i,
                                                 SensorType.Level,
                                                 this,
+                                                Array.Empty<ParameterDescription>(),
                                                 settings);
                 DeactivateSensor(_chargeLevel[i]);              // activate later in Update() if sensor is actually connected
             }
@@ -108,10 +110,11 @@ internal sealed class E320 : Hardware
             _humidityLevel = new Sensor[rtzCount];
             for (int i = 0; i < rtzCount; i++) // RTZ humidity
             {
-                _humidityLevel[i] = new Sensor("Oregon Humidity Level #" + i,
-                                                tzCount + rtzCount * 2 + i,
+                _humidityLevel[i] = new Sensor("Oregon Humidity Level #" + (i + 1),
+                                                i,
                                                 SensorType.Humidity,
                                                 this,
+                                                Array.Empty<ParameterDescription>(),
                                                 settings);
                 DeactivateSensor(_humidityLevel[i]);            // activate later in Update() if sensor is actually connected
             }
@@ -120,23 +123,29 @@ internal sealed class E320 : Hardware
             _controls = new Sensor[fanCount];
             for (int i = 0; i < fanCount; i++) // fans
             {
-                _fans[i] = new Sensor("Fan #" + i,
-                                                tzCount + rtzCount * 3 + i,
+                _fans[i] = new Sensor("Fan #" + (i + 1),
+                                                i,
                                                 SensorType.Fan,
                                                 this,
+                                                Array.Empty<ParameterDescription>(),
                                                 settings);
                 ActivateSensor(_fans[i]);
 
-                _controls[i] = new Sensor("Fan Control #" + i,
-                                                tzCount + rtzCount * 3 + fanCount + i,
+                _controls[i] = new Sensor("Fan Control #" + (i + 1),
+                                                i,
                                                 SensorType.Control,
                                                 this,
+                                                Array.Empty<ParameterDescription>(),
                                                 settings);
+                Control fanControl = new(_controls[i], settings, 0, 100);
+                _controls[i].Control = fanControl;
+                fanControl.ControlModeChanged += FanSoftwareControlValueChanged;
+                fanControl.SoftwareControlValueChanged += FanSoftwareControlValueChanged;
+                //fanControl.SetDefault();
+                FanSoftwareControlValueChanged(fanControl);
                 ActivateSensor(_controls[i]);
             }
 
-            /// set the update rate to 2 Hz
-            ///WriteInteger(0, 'L', 2);
             _available = true;
         }
         catch (IOException)
@@ -176,7 +185,6 @@ internal sealed class E320 : Hardware
 
                 if (msb != 0xFF && msb != 0x00)
                 {
-                    //_temperatures[i].Value = temp;
                     _temperatures[i].Value = temp + _temperatures[i].Parameters[0].Value; // temp with offset parameter
                     ActivateSensor(_temperatures[i]);
                 }
@@ -194,7 +202,6 @@ internal sealed class E320 : Hardware
 
                 if (msb != 0xFF && msb != 0x00)
                 {
-                    //_temperaturesRemote[i].Value = temp;
                     _temperaturesRemote[i].Value = temp + _temperaturesRemote[i].Parameters[0].Value; // temp with offset parameter
                     ActivateSensor(_temperaturesRemote[i]);
                 }
@@ -245,7 +252,7 @@ internal sealed class E320 : Hardware
                 else
                 {
                     _fans[i].Value = null;
-                    ///DeactivateSensor(_fans[i]);
+                    DeactivateSensor(_fans[i]);
                 }
             }
 
@@ -292,6 +299,29 @@ internal sealed class E320 : Hardware
             }
             catch (IOException)
             { }
+        }
+    }
+
+    private void FanSoftwareControlValueChanged(Control control)
+    {
+        if (control.ControlMode == ControlMode.Undefined || !_available || !_port.IsOpen)
+            return;
+
+        if (control.ControlMode == ControlMode.Software)
+        {
+            float value = control.SoftwareValue;
+            float fanSpeed = (byte)(value > 100 ? 100 : value < 0 ? 0 : value);
+
+            writeRegByte((byte)(REG_FAN_PWM + control.Sensor.Index), (byte)(fanSpeed * 0xFF / 100.0f));
+
+            _controls[control.Sensor.Index].Value = value;
+        }
+        else if (control.ControlMode == ControlMode.Default)
+        {
+            byte value = readRegByte(REG_FAN_DEF_PWM);
+            writeRegByte((byte)(REG_FAN_PWM + control.Sensor.Index), value);
+
+            _controls[control.Sensor.Index].Value = value;
         }
     }
 
