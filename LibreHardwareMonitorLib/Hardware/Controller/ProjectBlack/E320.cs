@@ -28,7 +28,7 @@ internal sealed class E320 : Hardware
     private const byte REG_RTZ =		0x1C; // word, ro, Remote Thermal Sensor (MSB contains integer (+ REG_TOFFSET) degree, LSB contains 1/256 degree) // same as RTZ
     private const byte REG_RHUMIDITY =  0x1E; // byte, ro, Remote Humidity Sensor (0-100%)
     private const byte REG_RBATTERY =   0x1F; // byte, ro, Remote sensor battery level (0-100%)
-    private const byte REG_VINT =		0x1C; // word, ro, Vsense #0
+    private const byte REG_VINT =		0x1C; // word, ro, Vsense #0 [! same as REG_RTZ]
     private const byte REG_FAN_PWM =    0x20; // byte, rw, PWM value #0
     private const byte REG_FAN_TACHO =	0x30; // word, ro, Fan tachometer #0
     private const byte REG_MCUREV =		0x50; // word, ro, DBGMCU revision ID
@@ -42,8 +42,8 @@ internal sealed class E320 : Hardware
     private readonly Sensor[] _temperaturesRemote;
     private readonly Sensor[] _chargeLevel;
     private readonly Sensor[] _humidityLevel;
-    //private readonly Sensor[] _fans;
-    //private readonly Sensor[] _controls;
+    private readonly Sensor[] _fans;
+    private readonly Sensor[] _controls;
     private readonly byte _tempOffset;
     private bool _available = false;
     private byte _reconnectTicker = 0;
@@ -67,18 +67,6 @@ internal sealed class E320 : Hardware
             int tzCount  = Math.Min(readRegByte(REG_TZ_COUNT),  (byte)6);
             int rtzCount = Math.Min(readRegByte(REG_RTZ_COUNT), (byte)1);
             int fanCount = Math.Min(readRegByte(REG_FAN_COUNT), (byte)8);
-
-            //_fans = new Sensor[fanCount];
-            //_controls = new Sensor[fanCount];
-            //for (int i = 0; i < fanCount; i++)
-            //{
-            //    int device = 33 + i;
-            //    string name = ReadString(device, 'C');
-            //    _fans[i] = new Sensor(name, device, SensorType.Fan, this, settings) { Value = ReadInteger(device, 'R') };
-            //    ActivateSensor(_fans[i]);
-            //    _controls[i] = new Sensor(name, device, SensorType.Control, this, settings) { Value = (100 / 255.0f) * ReadInteger(device, 'P') };
-            //    ActivateSensor(_controls[i]);
-            //}
 
             _temperatures = new Sensor[tzCount];
             for (int i = 0; i < tzCount; i++) // TZ
@@ -109,15 +97,42 @@ internal sealed class E320 : Hardware
             _chargeLevel = new Sensor[rtzCount];
             for (int i = 0; i < rtzCount; i++) // RTZ battery
             {
-                _chargeLevel[i] = new Sensor("Oregon Charge Level #" + i, tzCount + rtzCount + i, SensorType.Level, this, settings);
-                DeactivateSensor(_chargeLevel[i]);
+                _chargeLevel[i] = new Sensor("Oregon Charge Level #" + i,
+                                                tzCount + rtzCount + i,
+                                                SensorType.Level,
+                                                this,
+                                                settings);
+                DeactivateSensor(_chargeLevel[i]);              // activate later in Update() if sensor is actually connected
             }
 
             _humidityLevel = new Sensor[rtzCount];
             for (int i = 0; i < rtzCount; i++) // RTZ humidity
             {
-                _humidityLevel[i] = new Sensor("Oregon Humidity Level #" + i, tzCount + rtzCount * 2 + i, SensorType.Humidity, this, settings);
-                DeactivateSensor(_humidityLevel[i]);
+                _humidityLevel[i] = new Sensor("Oregon Humidity Level #" + i,
+                                                tzCount + rtzCount * 2 + i,
+                                                SensorType.Humidity,
+                                                this,
+                                                settings);
+                DeactivateSensor(_humidityLevel[i]);            // activate later in Update() if sensor is actually connected
+            }
+
+            _fans = new Sensor[fanCount];
+            _controls = new Sensor[fanCount];
+            for (int i = 0; i < fanCount; i++) // fans
+            {
+                _fans[i] = new Sensor("Fan #" + i,
+                                                tzCount + rtzCount * 3 + i,
+                                                SensorType.Fan,
+                                                this,
+                                                settings);
+                ActivateSensor(_fans[i]);
+
+                _controls[i] = new Sensor("Fan Control #" + i,
+                                                tzCount + rtzCount * 3 + fanCount + i,
+                                                SensorType.Control,
+                                                this,
+                                                settings);
+                ActivateSensor(_controls[i]);
             }
 
             /// set the update rate to 2 Hz
@@ -173,8 +188,8 @@ internal sealed class E320 : Hardware
 
             for (int i = 0; i < _temperaturesRemote.Length; i++) // RTZ
             {
-                byte msb = readRegByte((byte)(REG_RTZ + i * 2));
-                byte lsb = readRegByte((byte)(REG_RTZ + i * 2 + 1));
+                byte msb = readRegByte((byte)(REG_RTZ + i * 4));
+                byte lsb = readRegByte((byte)(REG_RTZ + i * 4 + 1));
                 float temp = msb - _tempOffset + lsb / 256.0f;
 
                 if (msb != 0xFF && msb != 0x00)
@@ -191,7 +206,7 @@ internal sealed class E320 : Hardware
 
             for (int i = 0; i < _chargeLevel.Length; i++) // RTZ battery
             {
-                byte data = readRegByte((byte)(REG_RBATTERY + i * 2));
+                byte data = readRegByte((byte)(REG_RBATTERY + i * 4));
 
                 if (data != 0xFF)
                 {
@@ -206,7 +221,7 @@ internal sealed class E320 : Hardware
 
             for (int i = 0; i < _humidityLevel.Length; i++) // RTZ humidity
             {
-                byte data = readRegByte((byte)(REG_RHUMIDITY + i * 2));
+                byte data = readRegByte((byte)(REG_RHUMIDITY + i * 4));
 
                 if (data != 0xFF)
                 {
@@ -217,6 +232,27 @@ internal sealed class E320 : Hardware
                 {
                     _humidityLevel[i].Value = null;
                 }
+            }
+
+            for (int i = 0; i < _fans.Length; i++) // fan tacho
+            {
+                ushort data = readRegWord((byte)(REG_FAN_TACHO + i * 2));
+
+                if (data != 0xFF) // double check if device configured wrong
+                {
+                    _fans[i].Value = data;
+                }
+                else
+                {
+                    _fans[i].Value = null;
+                    ///DeactivateSensor(_fans[i]);
+                }
+            }
+
+            for (int i = 0; i < _controls.Length; i++) // fan controls
+            {
+                byte data = readRegByte((byte)(REG_FAN_PWM + i));
+                _controls[i].Value = data * 100.0f / 0xFF;
             }
         }
         catch (IOException)
