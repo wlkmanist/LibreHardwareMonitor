@@ -29,9 +29,9 @@ internal sealed class E320 : Hardware
     private const byte REG_DEVRESET	=   0x0E; // byte, wo, software reboot device
     private const byte REG_BAUDRATE	=   0x0F; // byte, rw, current baud rate preset
     private const byte REG_TZ =		    0x10; // word, ro, Thermal Sensor #0 (MSB contains integer (+ REG_TOFFSET) degree, LSB contains 1/256 degree)
-    private const byte REG_RTZ =		0x1C; // word, ro, Remote Thermal Sensor (MSB contains integer (+ REG_TOFFSET) degree, LSB contains 1/256 degree) // same as RTZ
-    private const byte REG_RHUMIDITY =  0x1E; // byte, ro, Remote Humidity Sensor (0-100%)
-    private const byte REG_RBATTERY =   0x1F; // byte, ro, Remote sensor battery level (0-100%)
+    private const byte REG_RTZ =		0x1C; // word, ro, Remote Thermal Sensor #0 (MSB contains integer (+ REG_TOFFSET) degree, LSB contains 1/256 degree) // same as RTZ
+    private const byte REG_RHUMIDITY =  0x1E; // byte, ro, Remote Humidity Sensor #0 (0-100%)
+    private const byte REG_RBATTERY =   0x1F; // byte, ro, Remote sensor battery level #0 (0-100%)
     private const byte REG_VINT =		0x1C; // word, ro, Vsense #0 [! same as REG_RTZ]
     private const byte REG_FAN_PWM =    0x20; // byte, rw, PWM value #0
     private const byte REG_FAN_TACHO =	0x30; // word, ro, Fan tachometer #0
@@ -209,9 +209,6 @@ internal sealed class E320 : Hardware
                 byte page = (byte)((reg - 0x10) / 0x10);    // check if we need to set later an additional reg page
                 reg = (byte)(((reg - 0x10) % 0x10) + 0x10); // set reg addr to [0x10-0x1F] range
 
-                if (page > 1)                               // only one additional reg page available
-                    continue;
-
                 setRegPage(page);
 
                 byte msb = readRegByte(reg);
@@ -228,11 +225,16 @@ internal sealed class E320 : Hardware
                     _temperaturesRemote[i].Value = null;
                 }
             }
-            setRegPage(0);                                  // set page to default
 
             for (int i = 0; i < _chargeLevel.Length; i++)   // RTZ battery
             {
-                byte data = readRegByte((byte)(REG_RBATTERY + i * 4));
+                byte reg = (byte)(REG_RBATTERY + i * 4);
+                byte page = (byte)((reg - 0x10) / 0x10);    // check if we need to set later an additional reg page
+                reg = (byte)(((reg - 0x10) % 0x10) + 0x10); // set reg addr to [0x10-0x1F] range
+
+                setRegPage(page);
+
+                byte data = readRegByte(reg);
 
                 if (data != 0xFF)
                 {
@@ -247,7 +249,13 @@ internal sealed class E320 : Hardware
 
             for (int i = 0; i < _humidityLevel.Length; i++) // RTZ humidity
             {
-                byte data = readRegByte((byte)(REG_RHUMIDITY + i * 4));
+                byte reg = (byte)(REG_RHUMIDITY + i * 4);
+                byte page = (byte)((reg - 0x10) / 0x10);    // check if we need to set later an additional reg page
+                reg = (byte)(((reg - 0x10) % 0x10) + 0x10); // set reg addr to [0x10-0x1F] range
+
+                setRegPage(page);
+
+                byte data = readRegByte(reg);
 
                 if (data != 0xFF)
                 {
@@ -260,11 +268,13 @@ internal sealed class E320 : Hardware
                 }
             }
 
-            for (int i = 0; i < _fans.Length; i++) // fan tacho
+            setRegPage(0);                                  // set page to default
+
+            for (int i = 0; i < _fans.Length; i++)          // fan tacho
             {
                 ushort data = readRegWord((byte)(REG_FAN_TACHO + i * 2));
 
-                if (data != 0xFF) // double check if device configured wrong
+                if (data != 0xFF)                           // double check if device configured wrong
                 {
                     _fans[i].Value = data;
                 }
@@ -275,7 +285,7 @@ internal sealed class E320 : Hardware
                 }
             }
 
-            for (int i = 0; i < _controls.Length; i++) // fan controls
+            for (int i = 0; i < _controls.Length; i++)      // fan controls
             {
                 byte data = readRegByte((byte)(REG_FAN_PWM + i));
                 _controls[i].Value = data * 100.0f / 0xFF;
@@ -287,7 +297,7 @@ internal sealed class E320 : Hardware
             {
                 try
                 {
-                    _port.Close(); // Close to reinit in code above, device temporary disconnected
+                    _port.Close();                          // Close to reinit in code above, device temporary disconnected
                 }
                 catch (IOException)
                 { }
@@ -297,7 +307,7 @@ internal sealed class E320 : Hardware
                     Thread.Sleep(5000);
                     _reconnectTicker++;
                 }
-                else // device permanently disconnected
+                else                                        // device permanently disconnected
                 {
                     for (int i = 0; i < _temperatures.Length; i++) // TZ
                         _temperatures[i].Value = null;
@@ -314,7 +324,7 @@ internal sealed class E320 : Hardware
             try
             {
                 if (_port.IsOpen)
-                    _port.Close(); // Close to reinit in code above, device is frozen or after reset
+                    _port.Close();                          // Close to reinit in code above, device is frozen or after reset
             }
             catch (IOException)
             { }
