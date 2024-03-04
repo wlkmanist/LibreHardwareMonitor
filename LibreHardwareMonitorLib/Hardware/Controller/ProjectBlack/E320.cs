@@ -16,37 +16,39 @@ namespace LibreHardwareMonitor.Hardware.Controller.ProjectBlack;
 
 internal sealed class E320 : Hardware
 {
-    private const byte REG_TZ_COUNT =   0x01;
-    private const byte REG_FAN_COUNT =	0x02;
-    private const byte REG_VINT_COUNT =	0x03;
-    private const byte REG_RTZ_COUNT =	0x04;
-    private const byte REG_TOFFSET =	0x0A;
-    private const byte REG_FAN_MODE	=   0x0B;
-    private const byte REG_DEVRESET	=   0x0E;
-    private const byte REG_BAUDRATE	=   0x0F;
-    private const byte REG_TZ =		    0x10;
-    private const byte REG_RTZ =		0x1C;
-    private const byte REG_RHUMIDITY =  0x1E;
-    private const byte REG_RBATTERY =   0x1F;
-    private const byte REG_VINT =		0x1C; // same as RTZ
-    private const byte REG_FAN_PWM =    0x20;
-    private const byte REG_FAN_TACHO =	0x30;
-    private const byte REG_MCUREV =		0x50;
-    private const byte REG_MCUDEV =		0x52;
-    private const byte REG_PID =		0x5A;
-    private const byte REG_REV =		0x5C;
-    private const byte REG_VID =        0x5D;
+    private const byte REG_TZ_COUNT =   0x01; // byte, ro, TZ count (6 max)
+    private const byte REG_FAN_COUNT =	0x02; // byte, ro, PWM/Tacho count
+    private const byte REG_VINT_COUNT =	0x03; // byte, ro, Vsense count (2 max)
+    private const byte REG_RTZ_COUNT =	0x04; // byte, ro, Remote TZ count (1 max)
+    private const byte REG_TOFFSET =	0x0A; // byte, rw, Temp offset integer
+    private const byte REG_FAN_MODE	=   0x0B; // byte, rw, undefined
+    private const byte REG_DEVRESET	=   0x0E; // byte, wo, software reboot device
+    private const byte REG_BAUDRATE	=   0x0F; // byte, rw, current baud rate preset
+    private const byte REG_TZ =		    0x10; // word, ro, Thermal Sensor #0 (MSB contains integer (+ REG_TOFFSET) degree, LSB contains 1/256 degree)
+    private const byte REG_RTZ =		0x1C; // word, ro, Remote Thermal Sensor (MSB contains integer (+ REG_TOFFSET) degree, LSB contains 1/256 degree) // same as RTZ
+    private const byte REG_RHUMIDITY =  0x1E; // byte, ro, Remote Humidity Sensor (0-100%)
+    private const byte REG_RBATTERY =   0x1F; // byte, ro, Remote sensor battery level (0-100%)
+    private const byte REG_VINT =		0x1C; // word, ro, Vsense #0
+    private const byte REG_FAN_PWM =    0x20; // byte, rw, PWM value #0
+    private const byte REG_FAN_TACHO =	0x30; // word, ro, Fan tachometer #0
+    private const byte REG_MCUREV =		0x50; // word, ro, DBGMCU revision ID
+    private const byte REG_MCUDEV =		0x52; // word, ro, DBGMCU chip ID
+    private const byte REG_PID =		0x5A; // word, ro, Device ID
+    private const byte REG_REV =		0x5C; // byte, ro, board revision
+    private const byte REG_VID =        0x5D; // word, ro, Vendor ID
 
     private SerialPort _port;
     private readonly Sensor[] _temperatures;
     private readonly Sensor[] _temperaturesRemote;
+    private readonly Sensor[] _chargeLevel;
     //private readonly Sensor[] _fans;
     //private readonly Sensor[] _controls;
     private readonly byte _tempOffset;
     private bool _available = false;
     private byte _reconnectTicker = 0;
 
-    public E320(SerialPort port, ushort pid, byte rev, ISettings settings) : base("project.black E320 Series", new Identifier("serial", port.PortName), settings)
+    public E320(SerialPort port, ushort pid, byte rev, ISettings settings)
+        : base("project.black E320 Series", new Identifier("serial", port.PortName), settings)
     {
         _port = port;
         try
@@ -100,6 +102,13 @@ internal sealed class E320 : Hardware
                                                 settings);
 
                 DeactivateSensor(_temperaturesRemote[i]);       // activate later in Update() if sensor is actually connected
+            }
+
+            _chargeLevel = new Sensor[rtzCount];
+            for (int i = 0; i < rtzCount; i++) // RTZ battery
+            {
+                _chargeLevel[i] = new Sensor("Oregon Sensor Charge #" + i, tzCount + rtzCount + i, SensorType.Level, this, settings);
+                DeactivateSensor(_chargeLevel[i]);
             }
 
             /// set the update rate to 2 Hz
@@ -159,18 +168,33 @@ internal sealed class E320 : Hardware
                 byte lsb = readRegByte((byte)(REG_RTZ + i * 2 + 1));
                 float temp = msb - _tempOffset + lsb / 256.0f;
 
-                    if (msb != 0xFF && msb != 0x00)
-                    {
-                        //_temperaturesRemote[i].Value = temp;
-                        _temperaturesRemote[i].Value = temp + _temperaturesRemote[i].Parameters[0].Value; // temp with offset parameter
-                        ActivateSensor(_temperaturesRemote[i]);
-                    }
-                    else
-                    {
-                        _temperaturesRemote[i].Value = null;
-                    }
+                if (msb != 0xFF && msb != 0x00)
+                {
+                    //_temperaturesRemote[i].Value = temp;
+                    _temperaturesRemote[i].Value = temp + _temperaturesRemote[i].Parameters[0].Value; // temp with offset parameter
+                    ActivateSensor(_temperaturesRemote[i]);
+                }
+                else
+                {
+                    _temperaturesRemote[i].Value = null;
                 }
             }
+
+            for (int i = 0; i < _chargeLevel.Length; i++) // RTZ battery
+            {
+                byte data = readRegByte((byte)(REG_RBATTERY + i * 2));
+
+                if (data != 0xFF)
+                {
+                    _chargeLevel[i].Value = data;
+                    ActivateSensor(_chargeLevel[i]);
+                }
+                else
+                {
+                    _chargeLevel[i].Value = null;
+                }
+            }
+        }
         catch (IOException)
         {
             if (_port.IsOpen)
@@ -179,7 +203,7 @@ internal sealed class E320 : Hardware
                 {
                     _port.Close(); // Close to reinit in code above, device temporary disconnected
                 }
-                catch(IOException)
+                catch (IOException)
                 { }
 
                 if (_reconnectTicker < 1)
