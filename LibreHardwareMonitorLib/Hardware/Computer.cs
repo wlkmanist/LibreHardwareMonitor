@@ -39,6 +39,7 @@ public class Computer : IComputer
         
     private bool _batteryEnabled;
     private bool _controllerEnabled;
+    private bool _serialEnabled;
     private bool _cpuEnabled;
     private bool _gpuEnabled;
     private bool _memoryEnabled;
@@ -127,7 +128,6 @@ public class Computer : IComputer
                     Add(new AeroCoolGroup(_settings));
                     Add(new NzxtGroup(_settings));
                     Add(new RazerGroup(_settings));
-                    Add(new ProjectBlackGroup(_settings));
                 }
                 else
                 {
@@ -137,7 +137,6 @@ public class Computer : IComputer
                     RemoveType<AeroCoolGroup>();
                     RemoveType<NzxtGroup>();
                     RemoveType<RazerGroup>();
-                    RemoveType<ProjectBlackGroup>();
                 }
             }
 
@@ -226,6 +225,28 @@ public class Computer : IComputer
             {
                 SmBusIO.isDetectEnabled = value;
             }
+        }
+    }
+
+    /// <inheritdoc />
+    public bool IsSerialEnabled
+    {
+        get { return _serialEnabled; }
+        set
+        {
+            if (_open && value != _serialEnabled)
+            {
+                if (value)
+                {
+                    Add(new ProjectBlackGroup(_settings));
+                }
+                else
+                {
+                    RemoveType<ProjectBlackGroup>();
+                }
+            }
+
+            _serialEnabled = value;
         }
     }
 

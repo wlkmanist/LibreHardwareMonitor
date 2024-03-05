@@ -61,6 +61,7 @@ namespace LibreHardwareMonitor.UI
             this.nicMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.psuMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.smbusMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.serialMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menuItem6 = new System.Windows.Forms.ToolStripSeparator();
             this.exitMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.viewMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -142,6 +143,7 @@ namespace LibreHardwareMonitor.UI
             this.batteryMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.psuMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.smbusMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.serialMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.backgroundUpdater = new System.ComponentModel.BackgroundWorker();
             this.mainMenu.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer)).BeginInit();
@@ -280,6 +282,7 @@ namespace LibreHardwareMonitor.UI
             this.ramMenuItem,
             this.gpuMenuItem,
             this.fanControllerMenuItem,
+            this.serialMenuItem,
             this.hddMenuItem,
             this.nicMenuItem,
             this.psuMenuItem,
@@ -342,6 +345,12 @@ namespace LibreHardwareMonitor.UI
             this.smbusMenuItem.Name = "smbusMenuItem";
             this.smbusMenuItem.Size = new System.Drawing.Size(180, 22);
             this.smbusMenuItem.Text = "SMBus Devices";
+            //
+            // serialMenuItem
+            //
+            this.serialMenuItem.Name = "serialMenuItem";
+            this.serialMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.serialMenuItem.Text = "Serial Devices";
             // 
             // menuItem6
             // 
@@ -1109,6 +1118,7 @@ namespace LibreHardwareMonitor.UI
         private System.Windows.Forms.ToolStripMenuItem authWebServerMenuItem;
         private System.Windows.Forms.ToolStripMenuItem psuMenuItem;
         private System.Windows.Forms.ToolStripMenuItem smbusMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem serialMenuItem;
         private System.Windows.Forms.ToolStripMenuItem batteryMenuItem;
         private System.ComponentModel.BackgroundWorker backgroundUpdater;
     }
