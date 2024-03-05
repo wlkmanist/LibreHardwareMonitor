@@ -40,9 +40,15 @@ internal sealed class E320 : Hardware
     private const byte REG_REV =		0x5C; // byte, ro, board revision
     private const byte REG_VID =        0x5D; // word, ro, Vendor ID
 
+    // page [1]:
+    private const byte REG_TZ_LOCAL =   0x1C;	// byte, ro, Local Thermal Sensor (contains integer (+ REG_TOFFSET) degree)
+    private const byte REG_VCC =        0x1E;	// word, ro, Internal Vsense mV
+
+
     private SerialPort _port;
     private readonly Sensor[] _temperatures;
     private readonly Sensor[] _temperaturesRemote;
+    private readonly Sensor   _temperatureLocal;
     private readonly Sensor[] _chargeLevel;
     private readonly Sensor[] _humidityLevel;
     private readonly Sensor[] _fans;
@@ -76,35 +82,35 @@ internal sealed class E320 : Hardware
             int vccLocal = Math.Min(readRegByte(REG_VINT_COUNT) & 0x80, 1);
 
             _currentPage = readRegByte(REG_CFG);
-            setRegPage(0);                    // set page to default
+            setRegPage(0);                      // set page to default
 
-            _temperatures = new Sensor[tzCount + tzLocal];
-            if (tzLocal == 1)                  // MCU internal thermal sensor
+            if (tzLocal == 1)                   // MCU internal thermal sensor
             {
-                _temperatures[0] = new Sensor("Local",
+                _temperatureLocal = new Sensor("Local",
                                                 0,
                                                 SensorType.Temperature,
                                                 this,
                                                 new[] { new ParameterDescription("Offset [°C]", "Temperature offset.", 0) },
                                                 settings);
 
-                DeactivateSensor(_temperatures[0]);             // activate later in Update() if sensor is actually connected
+                DeactivateSensor(_temperatureLocal);             // activate later in Update() if sensor is actually connected
             }
 
-            for (int i = 0; i < tzCount; i++) // TZ
+            _temperatures = new Sensor[tzCount];
+            for (int i = 0; i < tzCount; i++)   // TZ
             {
-                _temperatures[i + tzLocal] = new Sensor("NTC Temperature #" + (i + 1),
+                _temperatures[i] = new Sensor("NTC Temperature #" + (i + 1),
                                                 tzLocal + i,
                                                 SensorType.Temperature,
                                                 this,
                                                 new[] { new ParameterDescription("Offset [°C]", "Temperature offset.", 0) },
                                                 settings);
 
-                DeactivateSensor(_temperatures[i + tzLocal]);   // activate later in Update() if sensor is actually connected
+                DeactivateSensor(_temperatures[i]);   // activate later in Update() if sensor is actually connected
             }
 
             _temperaturesRemote = new Sensor[rtzCount];
-            for (int i = 0; i < rtzCount; i++) // RTZ
+            for (int i = 0; i < rtzCount; i++)  // RTZ
             {
                 _temperaturesRemote[i] = new Sensor("Oregon Temperature #" + (i + 1),
                                                 tzLocal + tzCount + i,
@@ -117,7 +123,7 @@ internal sealed class E320 : Hardware
             }
 
             _chargeLevel = new Sensor[rtzCount];
-            for (int i = 0; i < rtzCount; i++) // RTZ battery
+            for (int i = 0; i < rtzCount; i++)  // RTZ battery
             {
                 _chargeLevel[i] = new Sensor("Oregon Charge Level #" + (i + 1),
                                                 i,
@@ -129,7 +135,7 @@ internal sealed class E320 : Hardware
             }
 
             _humidityLevel = new Sensor[rtzCount];
-            for (int i = 0; i < rtzCount; i++) // RTZ humidity
+            for (int i = 0; i < rtzCount; i++)  // RTZ humidity
             {
                 _humidityLevel[i] = new Sensor("Oregon Humidity Level #" + (i + 1),
                                                 i,
@@ -142,7 +148,7 @@ internal sealed class E320 : Hardware
 
             _fans = new Sensor[fanCount];
             _controls = new Sensor[fanCount];
-            for (int i = 0; i < fanCount; i++) // fans
+            for (int i = 0; i < fanCount; i++)  // fans
             {
                 _fans[i] = new Sensor("Fan #" + (i + 1),
                                                 i,
@@ -237,6 +243,23 @@ internal sealed class E320 : Hardware
                 else
                 {
                     _temperaturesRemote[i].Value = null;
+                }
+            }
+
+            if (_temperatureLocal != null) // Local temp
+            {
+                setRegPage(1);
+
+                byte temp = (byte)(readRegByte(REG_TZ_LOCAL) - _tempOffset);
+
+                if (temp != 0xFF && temp != 0x00)
+                {
+                    _temperatureLocal.Value = temp + _temperatureLocal.Parameters[0].Value; // temp with offset parameter
+                    ActivateSensor(_temperatureLocal);
+                }
+                else
+                {
+                    _temperatureLocal.Value = null;
                 }
             }
 
