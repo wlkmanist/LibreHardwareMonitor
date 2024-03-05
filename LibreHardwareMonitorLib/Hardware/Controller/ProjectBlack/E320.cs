@@ -11,8 +11,6 @@ using System;
 using System.IO;
 using System.IO.Ports;
 using System.Threading;
-using LibreHardwareMonitor.Hardware.Motherboard;
-using static LibreHardwareMonitor.Interop.Kernel32;
 
 namespace LibreHardwareMonitor.Hardware.Controller.ProjectBlack;
 
@@ -21,6 +19,7 @@ internal sealed class E320 : Hardware
     private const byte REG_TZ_COUNT =   0x01; // byte, ro, TZ count (6 max) ([7] bit - local temp, [4-6] bit - RTZ (3 max), [0-3] bit - TZ)
     private const byte REG_FAN_COUNT =	0x02; // byte, ro, PWM/Tacho count
     private const byte REG_VINT_COUNT =	0x03; // byte, ro, Vsense count (2 max) ([7] bit - internal Vcc, [0-6] bit - external Vsense)
+    private const byte REG_VREF_OFFSET= 0x09; // byte, rw, MCU Vref mV offset integer for correct Vcc measurement
     private const byte REG_TOFFSET =	0x0A; // byte, rw, Temp offset integer
     private const byte REG_FAN_MODE	=   0x0B; // byte, rw, undefined
     private const byte REG_FAN_DEF_PWM= 0x0C; // byte, rw, default fan control pwm
@@ -46,9 +45,10 @@ internal sealed class E320 : Hardware
 
 
     private SerialPort _port;
+    private readonly Sensor _vccLocal;
+    private readonly Sensor _temperatureLocal;
     private readonly Sensor[] _temperatures;
     private readonly Sensor[] _temperaturesRemote;
-    private readonly Sensor   _temperatureLocal;
     private readonly Sensor[] _chargeLevel;
     private readonly Sensor[] _humidityLevel;
     private readonly Sensor[] _fans;
@@ -84,16 +84,39 @@ internal sealed class E320 : Hardware
             _currentPage = readRegByte(REG_CFG);
             setRegPage(0);                      // set page to default
 
+            if (vccLocal == 1)                  // MCU Vcc
+            {
+                //const string formula = "Voltage = value + (value - Vf) * Ri / Rf.";
+                _vccLocal =         new Sensor("VCC",
+                                                0,
+                                                false,
+                                                SensorType.Voltage,
+                                                this,
+                                                new[]
+                                                {
+                                                    //new ParameterDescription("Ri [kΩ]", "Input resistance.\n" + formula, 0),
+                                                    //new ParameterDescription("Rf [kΩ]", "Reference resistance.\n" + formula, 1),
+                                                    //new ParameterDescription("Vf [V]", "Reference voltage.\n" + formula, 0),
+                                                    new ParameterDescription("Vref Offset", "Measured manually Vref offset in mV.\n" +
+                                                                            "Value used by this device to correct its measurements.\n" +
+                                                                            "Base Vref voltage is 1100mV.", 0)
+                                                },
+                                                settings);
+
+                DeactivateSensor(_vccLocal);
+            }
+
             if (tzLocal == 1)                   // MCU internal thermal sensor
             {
                 _temperatureLocal = new Sensor("Local",
                                                 0,
+                                                false,
                                                 SensorType.Temperature,
                                                 this,
                                                 new[] { new ParameterDescription("Offset [°C]", "Temperature offset.", 0) },
                                                 settings);
 
-                DeactivateSensor(_temperatureLocal);             // activate later in Update() if sensor is actually connected
+                DeactivateSensor(_temperatureLocal);
             }
 
             _temperatures = new Sensor[tzCount];
@@ -101,12 +124,13 @@ internal sealed class E320 : Hardware
             {
                 _temperatures[i] = new Sensor("NTC Temperature #" + (i + 1),
                                                 tzLocal + i,
+                                                false,
                                                 SensorType.Temperature,
                                                 this,
                                                 new[] { new ParameterDescription("Offset [°C]", "Temperature offset.", 0) },
                                                 settings);
 
-                DeactivateSensor(_temperatures[i]);   // activate later in Update() if sensor is actually connected
+                DeactivateSensor(_temperatures[i]);
             }
 
             _temperaturesRemote = new Sensor[rtzCount];
@@ -114,12 +138,13 @@ internal sealed class E320 : Hardware
             {
                 _temperaturesRemote[i] = new Sensor("Oregon Temperature #" + (i + 1),
                                                 tzLocal + tzCount + i,
+                                                false,
                                                 SensorType.Temperature,
                                                 this,
                                                 new[] { new ParameterDescription("Offset [°C]", "Temperature offset.", 0) },
                                                 settings);
 
-                DeactivateSensor(_temperaturesRemote[i]);       // activate later in Update() if sensor is actually connected
+                DeactivateSensor(_temperaturesRemote[i]);
             }
 
             _chargeLevel = new Sensor[rtzCount];
@@ -127,11 +152,12 @@ internal sealed class E320 : Hardware
             {
                 _chargeLevel[i] = new Sensor("Oregon Charge Level #" + (i + 1),
                                                 i,
+                                                false,
                                                 SensorType.Level,
                                                 this,
                                                 Array.Empty<ParameterDescription>(),
                                                 settings);
-                DeactivateSensor(_chargeLevel[i]);              // activate later in Update() if sensor is actually connected
+                DeactivateSensor(_chargeLevel[i]);
             }
 
             _humidityLevel = new Sensor[rtzCount];
@@ -139,11 +165,12 @@ internal sealed class E320 : Hardware
             {
                 _humidityLevel[i] = new Sensor("Oregon Humidity Level #" + (i + 1),
                                                 i,
+                                                false,
                                                 SensorType.Humidity,
                                                 this,
                                                 Array.Empty<ParameterDescription>(),
                                                 settings);
-                DeactivateSensor(_humidityLevel[i]);            // activate later in Update() if sensor is actually connected
+                DeactivateSensor(_humidityLevel[i]);
             }
 
             _fans = new Sensor[fanCount];
@@ -152,6 +179,7 @@ internal sealed class E320 : Hardware
             {
                 _fans[i] = new Sensor("Fan #" + (i + 1),
                                                 i,
+                                                false,
                                                 SensorType.Fan,
                                                 this,
                                                 Array.Empty<ParameterDescription>(),
@@ -160,6 +188,7 @@ internal sealed class E320 : Hardware
 
                 _controls[i] = new Sensor("Fan Control #" + (i + 1),
                                                 i,
+                                                false,
                                                 SensorType.Control,
                                                 this,
                                                 Array.Empty<ParameterDescription>(),
@@ -302,6 +331,35 @@ internal sealed class E320 : Hardware
                 else
                 {
                     _humidityLevel[i].Value = null;
+                }
+            }
+
+            if (_vccLocal != null) // Local temp
+            {
+                setRegPage(1);
+
+                if (readRegByte(REG_VREF_OFFSET) != _vccLocal.Parameters[0].Value)
+                {
+                    int offset = (int)_vccLocal.Parameters[0].Value;
+                    offset = (offset > 0x7F) ? 0x7F : ((offset < -0x80) ? -0x80 : offset);
+                    writeRegByte(REG_VREF_OFFSET, unchecked((byte)offset));
+                }
+
+                byte msb = readRegByte(REG_VCC);
+                byte lsb = readRegByte(REG_VCC + 1);
+                float vcc = ((msb << 8) + lsb) / 1000.0f;
+
+                if (msb != 0xFF && msb != 0x00)
+                {
+                    //_vccLocal.Value = vcc + ((vcc - _vccLocal.Parameters[2].Value) *
+                    //                _vccLocal.Parameters[0].Value /
+                    //                _vccLocal.Parameters[1].Value);
+                    _vccLocal.Value = vcc;
+                    ActivateSensor(_vccLocal);
+                }
+                else
+                {
+                    _vccLocal.Value = null;
                 }
             }
 
