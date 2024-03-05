@@ -98,7 +98,7 @@ internal sealed class E320 : Hardware
                                                     //new ParameterDescription("Rf [kΩ]", "Reference resistance.\n" + formula, 1),
                                                     //new ParameterDescription("Vf [V]", "Reference voltage.\n" + formula, 0),
                                                     new ParameterDescription("Vref Offset", "Measured manually Vref offset in mV.\n" +
-                                                                            "Value used by this device to correct its measurements.\n" +
+                                                                            "This value is used by device to correct its measurements.\n" +
                                                                             "Base Vref voltage is 1100mV.", 0)
                                                 },
                                                 settings);

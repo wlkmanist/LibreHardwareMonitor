@@ -9,14 +9,9 @@
 
 using System;
 using System.Collections.Generic;
-using System.Drawing;
-using System.Globalization;
 using System.IO.Ports;
-using System.Security;
 using System.Text;
 using System.Threading;
-using HidSharp;
-using Microsoft.Win32;
 
 namespace LibreHardwareMonitor.Hardware.Controller.ProjectBlack;
 
@@ -27,12 +22,6 @@ internal class ProjectBlackGroup : IGroup
 
     public ProjectBlackGroup(ISettings settings)
     {
-        // No implementation for ProjectBlack devices on Unix systems
-        if (Software.OperatingSystem.IsUnix)
-            return;
-
-
-
         string[] portNames = SerialPort.GetPortNames();
         for (int i = 0; i < portNames.Length; i++)
         {
@@ -72,6 +61,9 @@ internal class ProjectBlackGroup : IGroup
                     catch (TimeoutException)
                     {
                         _report.AppendLine("Status: Timeout Reading Vendor ID");
+
+                        serialPort.Close();
+                        continue;
                     }
 
                     ushort pid = readRegWord(serialPort, REG_PID);
@@ -119,7 +111,7 @@ internal class ProjectBlackGroup : IGroup
         if (_report.Length > 0)
         {
             StringBuilder r = new();
-            r.AppendLine("Serial Port Heatmaster");
+            r.AppendLine("Serial Port project.black Group");
             r.AppendLine();
             r.Append(_report);
             r.AppendLine();
