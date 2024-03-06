@@ -21,10 +21,10 @@ public enum HardwareType
     Storage,
     Network,
     Cooler,
-    EmbeddedController,
-    Psu,
-    Battery,
     Serial,
     Arduino,
-    PcieCard
+    PcieCard,
+    EmbeddedController,
+    Psu,
+    Battery
 }
