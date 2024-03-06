@@ -212,7 +212,7 @@ internal sealed class E320 : Hardware
 
     public override HardwareType HardwareType
     {
-        get { return HardwareType.Cooler; }
+        get { return HardwareType.Serial; }
     }
 
     public override void Update()

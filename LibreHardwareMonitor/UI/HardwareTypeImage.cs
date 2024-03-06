@@ -63,6 +63,15 @@ public class HardwareTypeImage
             case HardwareType.Battery:
                 image = Utilities.EmbeddedResources.GetImage("battery.png");
                 break;
+            case HardwareType.Serial:
+                image = Utilities.EmbeddedResources.GetImage("serial.png");
+                break;
+            case HardwareType.Arduino:
+                image = Utilities.EmbeddedResources.GetImage("arduino.png");
+                break;
+            case HardwareType.PcieCard:
+                image = Utilities.EmbeddedResources.GetImage("pcie.png");
+                break;
             default:
                 image = new Bitmap(1, 1);
                 break;

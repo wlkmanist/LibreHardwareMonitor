@@ -23,5 +23,8 @@ public enum HardwareType
     Cooler,
     EmbeddedController,
     Psu,
-    Battery
+    Battery,
+    Serial,
+    Arduino,
+    PcieCard
 }
