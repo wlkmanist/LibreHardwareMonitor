@@ -308,11 +308,11 @@ internal sealed class E320 : Hardware
             {
                 setRegPage(1);
 
-                byte temp = (byte)(readRegByte(REG_TZ_LOCAL) - _tempOffset);
+                byte temp = (byte)(readRegByte(REG_TZ_LOCAL));
 
                 if (temp != 0xFF && temp != 0x00)
                 {
-                    _temperatureLocal.Value = temp + _temperatureLocal.Parameters[0].Value; // temp with offset parameter
+                    _temperatureLocal.Value = temp - _tempOffset + _temperatureLocal.Parameters[0].Value; // temp with offset parameter
                     ActivateSensor(_temperatureLocal);
                 }
                 else
