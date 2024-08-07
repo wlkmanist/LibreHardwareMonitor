@@ -17,7 +17,7 @@ namespace LibreHardwareMonitor.Hardware.Motherboard.Lpc;
 internal class LMSensors
 {
     private const string HwMonPath = "/sys/class/hwmon/";
-    private readonly List<ISuperIO> _superIOs = [];
+    private readonly List<ISuperIO> _superIOs = new();
 
     public LMSensors()
     {
