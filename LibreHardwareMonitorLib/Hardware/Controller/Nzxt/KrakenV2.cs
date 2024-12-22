@@ -30,7 +30,7 @@ internal sealed class KrakenV2 : Hardware
 
     private readonly bool _fanControl;
 
-    public KrakenV2(HidDevice dev, ISettings settings) : base("Nzxt Kraken X", new Identifier("nzxt", "krakenx", dev.GetSerialNumber().TrimStart('0')), settings)
+    public KrakenV2(HidDevice dev, ISettings settings) : base("Nzxt Kraken X", new Identifier(dev), settings)
     {
         _device = dev;
 

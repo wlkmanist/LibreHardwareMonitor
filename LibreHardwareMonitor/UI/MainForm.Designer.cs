@@ -140,7 +140,7 @@ namespace LibreHardwareMonitor.UI
             this.webMenuItemSeparator = new System.Windows.Forms.ToolStripSeparator();
             this.webMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.runWebServerMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.serverPortMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.serverInterfacePortMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.authWebServerMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.helpMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.aboutMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -954,7 +954,7 @@ namespace LibreHardwareMonitor.UI
             //
             this.webMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.runWebServerMenuItem,
-            this.serverPortMenuItem,
+            this.serverInterfacePortMenuItem,
             this.authWebServerMenuItem});
             this.webMenuItem.Name = "webMenuItem";
             this.webMenuItem.Size = new System.Drawing.Size(221, 22);
@@ -968,10 +968,10 @@ namespace LibreHardwareMonitor.UI
             //
             // serverPortMenuItem
             //
-            this.serverPortMenuItem.Name = "serverPortMenuItem";
-            this.serverPortMenuItem.Size = new System.Drawing.Size(153, 22);
-            this.serverPortMenuItem.Text = "Port";
-            this.serverPortMenuItem.Click += new System.EventHandler(this.ServerPortMenuItem_Click);
+            this.serverInterfacePortMenuItem.Name = "serverInterfacePortMenuItem";
+            this.serverInterfacePortMenuItem.Size = new System.Drawing.Size(153, 22);
+            this.serverInterfacePortMenuItem.Text = "Interface / Port";
+            this.serverInterfacePortMenuItem.Click += new System.EventHandler(this.ServerInterfacePortMenuItem_Click);
             //
             // authWebServerMenuItem
             //
@@ -1157,7 +1157,7 @@ namespace LibreHardwareMonitor.UI
         private ToolStripRadioButtonMenuItem splitPanelFixedSensorScalingMenuItem;
         private System.Windows.Forms.ToolStripMenuItem webMenuItem;
         private System.Windows.Forms.ToolStripMenuItem runWebServerMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem serverPortMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem serverInterfacePortMenuItem;
         private System.Windows.Forms.ToolStripMenuItem menuItemFileHardware;
         private System.Windows.Forms.ToolStripMenuItem mainboardMenuItem;
         private System.Windows.Forms.ToolStripMenuItem cpuMenuItem;
