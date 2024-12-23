@@ -4,6 +4,7 @@
 // Partial Copyright (C) Michael Möller <mmoeller@openhardwaremonitor.org> and Contributors.
 // All Rights Reserved.
 
+using System;
 using System.Management;
 using System.Threading;
 
@@ -262,7 +263,7 @@ internal class SmBusDevice
                         }
                     }
                 }
-                else if (manufacturer.Equals("ADVANCED MICRO DEVICES, INC") == true)
+                else if (manufacturer.Equals("ADVANCED MICRO DEVICES, INC", StringComparison.OrdinalIgnoreCase) == true)
                 {
                     return 0x0B00;
                 }
