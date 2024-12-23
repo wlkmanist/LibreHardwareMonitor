@@ -4668,7 +4668,7 @@ internal sealed class SuperIOHardware : Hardware
                         break;
 
                     case Model.X570_MS7C35:
-                        // NCT6797D
+                        // NCT6797D or NCT6795D
                         // NCT7802Y (on SMBus): SYS_FAN5, CPU 1.8V, Chipset SOC, Chipset CLDO - not supported
                         // Unknown: PCIE 1, PCIE 3, M.2_1
 
@@ -4680,7 +4680,7 @@ internal sealed class SuperIOHardware : Hardware
                         //v.Add(new Voltage("Voltage #6", 5));    // VIN8, no pin for 6797D
                         v.Add(new Voltage("CPUMOSTIN", 6, true)); // VIN4, temperature input
                         v.Add(new Voltage("+3.3V Standby", 7, 34, 34));   // 3VSB, +3.3V digital power
-                        v.Add(new Voltage("CMOS Battery", 8, 34, 34, 0)); // VBAT
+                        v.Add(new Voltage("CMOS Battery", 8, 34, 34));    // VBAT
                         v.Add(new Voltage("CPU 1.8V", 9));        // VTT, CPU_1P8
                         v.Add(new Voltage("CPU VDDP", 10));       // VIN5  
                         v.Add(new Voltage("PMTIN", 11, true));    // VIN6, temperature input
