@@ -269,7 +269,10 @@ internal class SmBusDevice
                 }
             }
         }
-        catch { }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"SMBusDevice: DetectSmBus(): {ex.Message}");
+        }
 
         return 0;
     }
